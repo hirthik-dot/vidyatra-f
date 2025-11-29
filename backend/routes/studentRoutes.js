@@ -1,22 +1,35 @@
 // backend/routes/studentRoutes.js
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+import { getStudentDashboard } from "../controllers/StudentController.js";
+import { getTodayTimetable } from "../controllers/StudentTimetableController.js";
+import { getAISuggestions } from "../controllers/AISuggestionController.js";
 
 const router = express.Router();
 
-// Example: GET /api/student/dashboard
+// AI Suggestions
+router.get(
+  "/ai-suggestions",
+  authMiddleware,
+  requireRole("student"),
+  getAISuggestions
+);
+
+// Student Timetable (Today)
+router.get(
+  "/timetable",
+  authMiddleware,
+  requireRole("student"),
+  getTodayTimetable
+);
+
+// Student Dashboard
 router.get(
   "/dashboard",
-  protect,
+  authMiddleware,
   requireRole("student"),
-  async (req, res) => {
-    // Here, backend team can plug real data: attendance, assessments, etc.
-    res.json({
-      message: "Student dashboard data",
-      user: req.user,
-    });
-  }
+  getStudentDashboard
 );
 
 export default router;

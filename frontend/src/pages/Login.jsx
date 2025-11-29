@@ -3,17 +3,50 @@ import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [role, setRole] = useState("student");
+  const [role, setRole] = useState("student"); // still used for UI label
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    if (role === "student") navigate("/student/dashboard");
-    if (role === "faculty") navigate("/faculty/dashboard");
-    if (role === "admin") navigate("/admin/dashboard");
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      // Save token + user in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("role", data.user.role);
+
+      // Redirect based on REAL role from backend
+      if (data.user.role === "student") navigate("/student/dashboard");
+      else if (data.user.role === "faculty") navigate("/faculty/dashboard");
+      else if (data.user.role === "admin") navigate("/admin/dashboard");
+      else navigate("/login");
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      setError("Something went wrong. Please try again.");
+    }
   };
 
   return (
@@ -23,10 +56,12 @@ export default function Login() {
           VIDYATRA LOGIN
         </h1>
 
+        {/* Role selector is only for button label now (backend decides actual role) */}
         <div className="grid grid-cols-3 gap-3">
           {["student", "faculty", "admin"].map((r) => (
             <button
               key={r}
+              type="button"
               onClick={() => setRole(r)}
               className={`p-2 rounded-lg font-semibold capitalize ${
                 role === r
@@ -58,12 +93,17 @@ export default function Login() {
             required
           />
 
+          {error && (
+            <p className="text-red-500 text-sm font-semibold">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="w-full p-3 bg-blue-600 text-white rounded-lg font-bold"
+            disabled={loading}
+            className="w-full p-3 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-60"
           >
             <LogIn className="inline-block w-5 h-5 mr-2" />
-            Login as {role}
+            {loading ? "Logging in..." : `Login as ${role}`}
           </button>
         </form>
       </div>

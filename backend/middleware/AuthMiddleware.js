@@ -1,11 +1,11 @@
-// backend/middleware/authMiddleware.js
+// backend/middleware/AuthMiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-export const protect = async (req, res, next) => {
+// MAIN AUTH MIDDLEWARE
+const authMiddleware = async (req, res, next) => {
   let token;
 
-  // Expecting: Authorization: Bearer <token>
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer ")
@@ -13,8 +13,10 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
 
+      // Decode JWT token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // Attach user to request
       req.user = await User.findById(decoded.id).select("-password");
 
       if (!req.user) {
@@ -23,10 +25,12 @@ export const protect = async (req, res, next) => {
 
       return next();
     } catch (err) {
-      console.error(err);
+      console.error("Auth error:", err);
       return res.status(401).json({ message: "Invalid token" });
     }
   }
 
   return res.status(401).json({ message: "Not authorized, no token" });
 };
+
+export default authMiddleware;

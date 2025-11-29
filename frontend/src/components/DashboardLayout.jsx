@@ -1,15 +1,24 @@
-// src/components/DashboardLayout.jsx
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 
 export default function DashboardLayout({ sidebarItems, title }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Just the last part after /student/, /faculty/, /admin/
   const pathParts = location.pathname.split("/");
   const current = pathParts[pathParts.length - 1] || "dashboard";
+
+  const handleLogout = () => {
+    // Clear all auth data
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+
+    navigate("/login");
+  };
 
   return (
     <div className="flex h-screen bg-cyan-50">
@@ -52,16 +61,27 @@ export default function DashboardLayout({ sidebarItems, title }) {
       <div className="flex-1 flex flex-col">
         {/* TOP NAVBAR */}
         <header className="flex items-center justify-between bg-white shadow-md p-4">
-          <button
-            className="md:hidden text-blue-700"
-            onClick={() => setOpen(!open)}
-          >
-            {open ? <X size={28} /> : <Menu size={28} />}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="md:hidden text-blue-700"
+              onClick={() => setOpen(!open)}
+            >
+              {open ? <X size={28} /> : <Menu size={28} />}
+            </button>
 
-          <h1 className="text-xl font-bold text-blue-700 capitalize">
-            {current.replace("-", " ")}
-          </h1>
+            <h1 className="text-xl font-bold text-blue-700 capitalize">
+              {current.replace("-", " ")}
+            </h1>
+          </div>
+
+          {/* Logout button */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-500 hover:text-red-700 font-semibold"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
         </header>
 
         {/* CONTENT */}

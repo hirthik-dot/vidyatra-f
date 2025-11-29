@@ -1,13 +1,23 @@
 // backend/routes/adminRoutes.js
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+import { markFacultyAbsent } from "../controllers/AdminTimetableController.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
+
+router.get("/faculty-list", authMiddleware, requireRole("admin"), async (req, res) => {
+  const faculty = await User.find({ role: "faculty" });
+  res.json({ faculty });
+});
+
+
+router.post("/faculty/absent", authMiddleware, requireRole("admin"), markFacultyAbsent);
 router.get(
   "/dashboard",
-  protect,
+  authMiddleware,
   requireRole("admin"),
   async (req, res) => {
     res.json({

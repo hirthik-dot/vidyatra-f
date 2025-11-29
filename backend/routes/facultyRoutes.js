@@ -1,13 +1,19 @@
 // backend/routes/facultyRoutes.js
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+import { getFacultyTodayTimetable } from "../controllers/FacultyTimetableController.js";
+
+
+
 
 const router = express.Router();
 
+router.get("/timetable", authMiddleware, requireRole("faculty"), getFacultyTodayTimetable);
+
 router.get(
   "/dashboard",
-  protect,
+  authMiddleware,
   requireRole("faculty"),
   async (req, res) => {
     res.json({

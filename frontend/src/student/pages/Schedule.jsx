@@ -1,20 +1,49 @@
-export default function StudentSchedule() {
-  const schedule = [
-    { period: 1, subject: "Maths", time: "9:00 - 9:45" },
-    { period: 2, subject: "English", time: "9:45 - 10:30" },
-    { period: 3, subject: "Science", time: "10:30 - 11:15" },
-  ];
+import { useEffect, useState } from "react";
+
+export default function Schedule() {
+  const [periods, setPeriods] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    fetch("http://localhost:5000/api/student/timetable", {
+      headers: { Authorization: "Bearer " + token }
+    })
+      .then((res) => res.json())
+      .then((data) => setPeriods(data.periods || []));
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">My Schedule</h2>
+    <div>
+      <h2 className="text-3xl font-bold text-blue-700 mb-4">
+        Today's Timetable
+      </h2>
 
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        {schedule.map((s, i) => (
-          <div key={i} className="border p-4 rounded-lg flex justify-between">
-            <span className="font-semibold">Period {s.period}</span>
-            <span>{s.subject}</span>
-            <span className="text-gray-600">{s.time}</span>
+      <div className="space-y-3">
+        {periods.map((p, i) => (
+          <div
+            key={i}
+            className={`p-4 rounded-xl shadow 
+              ${p.subject ? "bg-white" : "bg-yellow-100"}`}
+          >
+            <p className="font-bold">
+              {p.start} - {p.end}
+            </p>
+            <p className="text-gray-700">
+              {p.subject || "FREE PERIOD"}
+            </p>
+
+            {!p.subject && (
+              <p className="text-sm text-red-600">
+                Reason: Faculty absent
+              </p>
+            )}
+
+            {p.suggestion && (
+              <p className="text-green-600 mt-2 text-sm">
+                Suggestion: {p.suggestion}
+              </p>
+            )}
           </div>
         ))}
       </div>
