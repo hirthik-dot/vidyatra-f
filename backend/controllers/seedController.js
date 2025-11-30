@@ -1,150 +1,147 @@
-import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import StudentStats from "../models/StudentStats.js";
-import Timetable from "../models/Timetable.js";
+import ClassTimetable from "../models/ClassTimetable.js";
 
 export const seedDatabase = async (req, res) => {
   try {
-    // 1) CLEAR OLD DATA (only for dev/demo)
+    console.log("🔥 Resetting database...");
+
     await User.deleteMany({});
     await StudentStats.deleteMany({});
-    await Timetable.deleteMany({});
+    await ClassTimetable.deleteMany({});
 
-    // 2) COMMON PASSWORD
-    const passwordHash = await bcrypt.hash("password123", 10);
+    const CLASS = "CSE-A";
 
-    // 3) CREATE ADMIN
+    // 1) ADMIN
     const admin = await User.create({
       name: "System Admin",
       email: "admin@test.com",
-      password: passwordHash,
+      password: "admin123",
       role: "admin",
+      department: "CSE",
     });
 
-    // 4) CREATE FACULTY (3 teachers)
+    // 2) FACULTY (6)
     const facultyData = [
-      { name: "Rahul Verma", email: "rahul@vidyatra.com", subject: "Maths" },
-      { name: "Priya Nair", email: "priya@vidyatra.com", subject: "Physics" },
-      { name: "Amit Kumar", email: "amit@vidyatra.com", subject: "English" },
+      { name: "Dr. Arjun Kumar", email: "f1@test.com", subject: "Maths" },
+      { name: "Dr. Priya Sharma", email: "f2@test.com", subject: "Physics" },
+      { name: "Dr. Vivek Rao", email: "f3@test.com", subject: "Chemistry" },
+      { name: "Dr. Neha Singh", email: "f4@test.com", subject: "English" },
+      { name: "Dr. Karan Patel", email: "f5@test.com", subject: "Programming" },
+      { name: "Dr. Meera Iyer", email: "f6@test.com", subject: "Lab" },
     ];
 
-    const facultyDocs = [];
-    for (const f of facultyData) {
-      const doc = await User.create({
-        name: f.name,
-        email: f.email,
-        password: passwordHash,
+    const faculty = await User.insertMany(
+      facultyData.map((f) => ({
+        ...f,
+        password: "faculty123",
         role: "faculty",
         department: "CSE",
-      });
-      facultyDocs.push({ ...f, _id: doc._id });
-    }
+      }))
+    );
 
-    // Helper to find faculty ID by subject
-    const getFacultyIdForSubject = (subject) => {
-      const found = facultyDocs.find((f) => f.subject === subject);
-      return found ? found._id : null;
+    const facultyBySubject = {};
+    faculty.forEach((f) => {
+      facultyBySubject[f.subject] = f;
+    });
+
+    // 3) STUDENTS (5) — all in CSE-A
+    const studentData = [
+      { name: "Student One", email: "s1@test.com" },
+      { name: "Student Two", email: "s2@test.com" },
+      { name: "Student Three", email: "s3@test.com" },
+      { name: "Student Four", email: "s4@test.com" },
+      { name: "Student Five", email: "s5@test.com" },
+    ];
+
+    const students = await User.insertMany(
+      studentData.map((s) => ({
+        ...s,
+        password: "student123",
+        role: "student",
+        className: CLASS,
+        department: "CSE",
+        year: 1,
+      }))
+    );
+
+    await StudentStats.insertMany(
+      students.map((s) => ({
+        user: s._id,
+        attendancePercent: 0,
+        assignmentsPending: 0,
+        upcomingExams: 0,
+        announcements: [],
+      }))
+    );
+
+    // 4) CLASS TIMETABLE (CSE-A, Mon–Sat, 6 periods)
+    const timeSlots = [
+      { period: 1, start: "09:00", end: "09:50" },
+      { period: 2, start: "09:50", end: "10:40" },
+      { period: 3, start: "10:50", end: "11:40" },
+      { period: 4, start: "11:40", end: "12:30" },
+      { period: 5, start: "13:30", end: "14:20" },
+      { period: 6, start: "14:20", end: "15:10" },
+    ];
+
+    const dayPlan = {
+      Monday:    ["Maths", "Physics", "Chemistry", "English", "Programming", "Lab"],
+      Tuesday:   ["Physics", "Maths", "English", "Chemistry", "Programming", "Lab"],
+      Wednesday: ["Chemistry", "Maths", "Physics", "English", "Programming", "Lab"],
+      Thursday:  ["Maths", "Chemistry", "English", "Physics", "Programming", "Lab"],
+      Friday:    ["Physics", "English", "Maths", "Chemistry", "Programming", "Lab"],
+      Saturday:  ["English", "Maths", "Chemistry", "Physics", "Programming", "Lab"],
     };
 
-    // 5) CREATE STUDENTS (5)
-    const studentNames = [
-      "Student One",
-      "Student Two",
-      "Student Three",
-      "Student Four",
-      "Student Five",
-    ];
+    const classTimetables = [];
 
-    const studentDocs = [];
+    Object.keys(dayPlan).forEach((day) => {
+      const subjects = dayPlan[day];
+      const periods = timeSlots.map((slot, idx) => {
+        const subject = subjects[idx];
+        const teacher = facultyBySubject[subject];
 
-    for (let i = 0; i < studentNames.length; i++) {
-      const s = await User.create({
-        name: studentNames[i],
-        email: `student${i + 1}@test.com`,
-        password: passwordHash,
-        role: "student",
-        department: "CSE",
-        year: 2,
+        return {
+          period: slot.period,
+          start: slot.start,
+          end: slot.end,
+          subject,
+          faculty: teacher ? teacher._id : null,
+          isFreePeriod: false,
+          teacherAbsent: false,
+          substituteFaculty: null,
+        };
       });
-      studentDocs.push(s);
 
-      // Student stats for each
-      await StudentStats.create({
-        user: s._id,
-        attendancePercent: 75 + i, // just variation
-        assignmentsPending: 2 + (i % 2),
-        upcomingExams: 1 + (i % 3),
-        announcements: [
-          "Internal assessment next week",
-          "Workshop on AI this Friday",
-        ],
+      classTimetables.push({
+        className: CLASS,
+        day,
+        periods,
       });
-    }
+    });
 
-    // 6) CREATE TIMETABLE FOR EACH STUDENT (Mon–Fri, 6 periods)
+    await ClassTimetable.insertMany(classTimetables);
 
-    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-    const basePeriods = [
-      { start: "09:00", end: "10:00", subject: "Maths" },
-      { start: "10:00", end: "11:00", subject: "Physics" },
-      { start: "11:00", end: "12:00", subject: "English" },
-      { start: "12:00", end: "13:00", subject: "Computer Lab" },
-      { start: "14:00", end: "15:00", subject: "Free / Self Study" },
-      { start: "15:00", end: "16:00", subject: "Maths Tutorial" },
-    ];
-
-    for (const student of studentDocs) {
-      for (const day of days) {
-        const periodsWithFaculty = basePeriods.map((p) => {
-          let facultyId = null;
-
-          if (p.subject === "Maths" || p.subject === "Maths Tutorial") {
-            facultyId = getFacultyIdForSubject("Maths");
-          } else if (p.subject === "Physics") {
-            facultyId = getFacultyIdForSubject("Physics");
-          } else if (p.subject === "English") {
-            facultyId = getFacultyIdForSubject("English");
-          } else {
-            facultyId = null; // Computer Lab or Free period
-          }
-
-          return {
-            start: p.start,
-            end: p.end,
-            subject: p.subject,
-            faculty: facultyId,
-          };
-        });
-
-        await Timetable.create({
-          student: student._id,
-          day,
-          periods: periodsWithFaculty,
-        });
-      }
-    }
+    console.log("✅ Class-based timetable seeded.");
 
     return res.json({
-      message: "Database successfully seeded with users + stats + timetables!",
-      admin: {
-        email: "admin@test.com",
-        password: "password123",
-      },
-      facultyLogins: facultyDocs.map((f) => ({
+      message: "Seeded: 1 admin, 6 faculty, 5 students, class timetable CSE-A",
+      admin: { email: admin.email, password: "admin123" },
+      faculty: faculty.map((f) => ({
         name: f.name,
-        email: f.email,
         subject: f.subject,
-        password: "password123",
+        email: f.email,
+        password: "faculty123",
       })),
-      studentLogins: studentDocs.map((s, idx) => ({
+      students: students.map((s) => ({
         name: s.name,
-        email: `student${idx + 1}@test.com`,
-        password: "password123",
+        email: s.email,
+        password: "student123",
       })),
     });
-  } catch (error) {
-    console.error("Seed error:", error);
-    res.status(500).json({ message: "Seed failed" });
+  } catch (err) {
+    console.error("❌ Seed error:", err);
+    return res.status(500).json({ message: "Seed failed" });
   }
 };

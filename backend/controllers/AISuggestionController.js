@@ -1,48 +1,38 @@
 // backend/controllers/AISuggestionController.js
-import Timetable from "../models/Timetable.js";
+import ClassTimetable from "../models/ClassTimetable.js";
+
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 export const getAISuggestions = async (req, res) => {
   try {
-    const days = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday"
-    ];
+    const className = req.user.className;
+    const todayName = DAYS[new Date().getDay()];
 
-    const todayName = days[new Date().getDay()];
+    const timetable = await ClassTimetable.findOne({
+      className,
+      day: todayName,
+    });
 
-    // Load timetable for today
-    const timetable = await Timetable.find({ day: todayName });
-
-    // 🛑 If no timetable exists → return empty response (NO ERROR)
-    if (!timetable || timetable.length === 0) {
-      return res.json({
-        message: "No timetable found for today",
-        suggestions: [],
-      });
+    if (!timetable) {
+      return res.json({ suggestions: [] });
     }
 
-    // Identify free periods
-    const freePeriods = timetable.filter((p) => p.teacherAbsent === true);
+    const freePeriods = timetable.periods.filter((p) => p.isFreePeriod);
 
-    // No free periods → no suggestions
-    if (freePeriods.length === 0) {
-      return res.json({
-        message: "No free periods today",
-        suggestions: [],
-      });
-    }
-
-    // Simple AI suggestions (MVP)
     const suggestions = freePeriods.map((p) => ({
       period: p.period,
       start: p.start,
       end: p.end,
-      suggestion: "Revise your weak subjects or complete pending assignments",
+      suggestion:
+        "Use this free period to revise difficult topics, complete pending assignments, or explore career-related resources.",
     }));
 
     return res.json({ suggestions });

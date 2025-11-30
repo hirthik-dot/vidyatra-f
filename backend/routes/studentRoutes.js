@@ -2,21 +2,37 @@
 import express from "express";
 import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
-import { getStudentDashboard } from "../controllers/StudentController.js";
 import { getTodayTimetable } from "../controllers/StudentTimetableController.js";
 import { getAISuggestions } from "../controllers/AISuggestionController.js";
+import { getStudentDashboard } from "../controllers/StudentController.js";
+import { saveInterests } from "../controllers/studentInterestController.js";
+import { markStudentAttendance } from "../controllers/AttendanceController.js";
+import { getCurrentQR } from "../controllers/QrController.js";
+import { getLiveQR } from "../controllers/AttendanceController.js";
+
+
+
+
+
+
+
+
+
+
 
 const router = express.Router();
 
-// AI Suggestions
+router.post("/save-interests", authMiddleware, saveInterests);
+
+// Dashboard data
 router.get(
-  "/ai-suggestions",
+  "/dashboard",
   authMiddleware,
   requireRole("student"),
-  getAISuggestions
+  getStudentDashboard
 );
 
-// Student Timetable (Today)
+// Today's timetable
 router.get(
   "/timetable",
   authMiddleware,
@@ -24,12 +40,23 @@ router.get(
   getTodayTimetable
 );
 
-// Student Dashboard
+// AI suggestions (free period tasks)
 router.get(
-  "/dashboard",
+  "/ai-suggestions",
   authMiddleware,
   requireRole("student"),
-  getStudentDashboard
+  getAISuggestions
 );
+
+router.post(
+  "/attendance/mark",
+  authMiddleware,
+  markStudentAttendance
+);
+
+router.get("/qr/current", getCurrentQR);
+
+router.get("/qr/current", getLiveQR);
+
 
 export default router;

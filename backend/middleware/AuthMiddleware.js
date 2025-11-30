@@ -1,9 +1,8 @@
-// backend/middleware/AuthMiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// MAIN AUTH MIDDLEWARE
-const authMiddleware = async (req, res, next) => {
+// ✔ Normal authentication
+export const protect = async (req, res, next) => {
   let token;
 
   if (
@@ -13,10 +12,8 @@ const authMiddleware = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
 
-      // Decode JWT token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Attach user to request
       req.user = await User.findById(decoded.id).select("-password");
 
       if (!req.user) {
@@ -25,7 +22,6 @@ const authMiddleware = async (req, res, next) => {
 
       return next();
     } catch (err) {
-      console.error("Auth error:", err);
       return res.status(401).json({ message: "Invalid token" });
     }
   }
@@ -33,4 +29,15 @@ const authMiddleware = async (req, res, next) => {
   return res.status(401).json({ message: "Not authorized, no token" });
 };
 
-export default authMiddleware;
+// ✔ Admin-only auth
+export const protectAdmin = async (req, res, next) => {
+  await protect(req, res, async () => {
+    if (req.user.role !== "admin") {
+      return res.status(401).json({ message: "Admin access denied" });
+    }
+    next();
+  });
+};
+
+// ✔ Fix: Add default export for old imports
+export default protect;

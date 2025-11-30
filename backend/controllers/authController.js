@@ -10,13 +10,18 @@ const generateToken = (user) => {
   );
 };
 
-// For now we implement only login (admin can create users from DB or future API)
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Debug: what frontend sent
+    console.log("Frontend sent:", email, password);
+
     // 1) Check user exists
     const user = await User.findOne({ email });
+
+    // Debug: is user found?
+    console.log("User found:", user);
 
     if (!user) {
       return res
@@ -24,9 +29,11 @@ export const loginUser = async (req, res) => {
         .json({ message: "Invalid email or password (user not found)" });
     }
 
-    // 2) Check password
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
+    // Debug: show DB password
+    console.log("DB password:", user.password);
+
+    // 2) Plain text password check (NO hashing)
+    if (password !== user.password) {
       return res
         .status(401)
         .json({ message: "Invalid email or password (wrong password)" });
@@ -35,7 +42,7 @@ export const loginUser = async (req, res) => {
     // 3) Generate token
     const token = generateToken(user);
 
-    // 4) Send back role so frontend can redirect to /student /faculty /admin
+    // 4) Send user + token
     res.json({
       token,
       user: {
@@ -46,7 +53,7 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Login error:", err.message);
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
