@@ -25,8 +25,8 @@ export default function StudentLayout() {
     { label: "Leave / OD", path: "leave", icon: MessageCircle },
     { label: "Communication", path: "communication", icon: MessageSquare },
     { label: "AI Assistant", path: "ai", icon: BrainCircuit },
-    { label: "Feedback", path: "feedback", icon: Lightbulb },
-    { label: "Suggestions", path: "suggestions", icon: Lightbulb },
+    { label: "Feedback & Suggestion", path: "feedback", icon: Lightbulb },
+    { label: "Recommendations", path: "suggestions", icon: Lightbulb },
     { label: "Profile", path: "profile", icon: User },
   ];
 
