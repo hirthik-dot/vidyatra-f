@@ -3,12 +3,15 @@ import express from "express";
 import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { getTodayTimetable } from "../controllers/StudentTimetableController.js";
-import { getAISuggestions } from "../controllers/AISuggestionController.js";
+import { getAISuggestions } from "../controllers/AiSuggestionController.js";
 import { getStudentDashboard } from "../controllers/StudentController.js";
 import { saveInterests } from "../controllers/studentInterestController.js";
 import { markStudentAttendance } from "../controllers/AttendanceController.js";
 import { getCurrentQR } from "../controllers/QrController.js";
 import { getLiveQR } from "../controllers/AttendanceController.js";
+
+
+
 
 
 
@@ -57,6 +60,7 @@ router.post(
 router.get("/qr/current", getCurrentQR);
 
 router.get("/qr/current", getLiveQR);
+router.get("/ai-suggestions", authMiddleware, getAISuggestions);
 
 
 export default router;

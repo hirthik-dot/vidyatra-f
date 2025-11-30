@@ -13,6 +13,7 @@ import {
 import {
   getMyClassStudents,
   getPresentStudentsForFaculty,
+  getFacultyAttendanceForDay,   // ✅ ADDED IMPORT
 } from "../controllers/FacultyAttendanceController.js";
 
 const router = express.Router();
@@ -23,7 +24,6 @@ const protectFaculty = [authMiddleware, requireRole("faculty")];
 /* ---------------------------------------------------------
    FACULTY TIMETABLE ROUTES
 ---------------------------------------------------------- */
-console.log("HIT /faculty/attendance/current");
 
 // Get today's timetable
 router.get("/timetable", protectFaculty, getFacultyTodayTimetable);
@@ -41,10 +41,13 @@ router.post("/timetable/claim", protectFaculty, claimFreePeriod);
    FACULTY ATTENDANCE ROUTES
 ---------------------------------------------------------- */
 
-// ⭐ Get students of faculty’s class
+// Get students of faculty’s class
 router.get("/students", protectFaculty, getMyClassStudents);
 
-// ⭐ Get students present in current period
+// Get students present in current period
 router.get("/attendance/current", protectFaculty, getPresentStudentsForFaculty);
+
+// ⭐ NEW → Get FULL day attendance
+router.get("/attendance/day", protectFaculty, getFacultyAttendanceForDay);
 
 export default router;

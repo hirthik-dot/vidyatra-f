@@ -2,9 +2,7 @@ import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
 import ClassTimetable from "../models/ClassTimetable.js";
 
-const DAYS = [
-  "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"
-];
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 function getTodayName() {
   let day = DAYS[new Date().getDay()];
@@ -14,111 +12,110 @@ function getTodayName() {
 
 function getTodayRange() {
   const start = new Date();
-  start.setHours(0,0,0,0);
+  start.setHours(0, 0, 0, 0);
 
   const end = new Date();
-  end.setHours(23,59,59,999);
+  end.setHours(23, 59, 59, 999);
 
   return { start, end };
 }
 
-/* --------------------------------------------
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/* ----------------------------------------------------------
    1) Get all students of faculty’s class
---------------------------------------------- */
+----------------------------------------------------------- */
 export const getMyClassStudents = async (req, res) => {
   try {
     const className = req.user.className;
-    if (!className) return res.json({ totalStudents: 0, students: [] });
+    if (!className) {
+      return res.json({ className: null, totalStudents: 0, students: [] });
+    }
 
-    const students = await User.find({ 
+    const students = await User.find({
       role: "student",
-      className
+      className,
     }).select("name roll");
 
     return res.json({
       className,
       totalStudents: students.length,
-      students
+      students,
     });
-
   } catch (err) {
-    console.error("getMyClassStudents:", err);
+    console.error("getMyClassStudents ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-/* --------------------------------------------
-   2) Get present students for current period
---------------------------------------------- */
-
+/* ----------------------------------------------------------
+   2) Get students present in CURRENT period
+----------------------------------------------------------- */
 export const getPresentStudentsForFaculty = async (req, res) => {
   try {
     const facultyId = req.user._id.toString();
     const today = getTodayName();
     const { start, end } = getTodayRange();
 
-    // 1) Find all timetables for today
     const timetables = await ClassTimetable.find({ day: today });
 
     let activeClass = null;
-    let currentPeriodNo = null;
+    let currentPeriod = null;
 
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
 
-    // 2) Detect which CLASS this faculty is teaching right now
     for (const tt of timetables) {
       for (const p of tt.periods) {
         if (!p.start || !p.end) continue;
 
-        const [sh, sm] = p.start.split(":").map(Number);
-        const [eh, em] = p.end.split(":").map(Number);
-        const s = sh * 60 + sm;
-        const e = eh * 60 + em;
+        const s = timeToMinutes(p.start);
+        const e = timeToMinutes(p.end);
 
-        const isTeaching =
-          (p.faculty && p.faculty.toString() === facultyId) ||
-          (p.substituteFaculty &&
-            p.substituteFaculty.toString() === facultyId);
+        const teaching =
+          p.faculty?.toString() === facultyId ||
+          p.substituteFaculty?.toString() === facultyId;
 
-        if (isTeaching && nowMin >= s && nowMin <= e) {
+        if (teaching && nowMin >= s && nowMin <= e) {
           activeClass = tt.className;
-          currentPeriodNo = p.period;
+          currentPeriod = p.period;
           break;
         }
       }
       if (activeClass) break;
     }
 
-    // 3) DEMO MODE: if no active class, use first timetable + period 1
-    if (!activeClass && timetables.length > 0) {
-      activeClass = timetables[0].className;
-      currentPeriodNo = timetables[0].periods[0].period;
+    // Fallback DEMO
+    if (!activeClass) {
+      activeClass = timetables[0]?.className;
+      currentPeriod = timetables[0]?.periods[0]?.period;
     }
 
     if (!activeClass) {
       return res.json({
         className: null,
+        period: null,
+        students: [],
         presentCount: 0,
         totalStudents: 0,
-        students: [],
       });
     }
 
-    // 4) Fetch present students for that class + period
     const records = await Attendance.find({
       className: activeClass,
-      period: currentPeriodNo,
+      period: currentPeriod,
       date: { $gte: start, $lte: end },
     }).populate("student", "name roll");
 
-    const presentStudents = records.map((r) => ({
+    const present = records.map((r) => ({
       name: r.student.name,
-      roll: r.student.roll || "",
+      roll: r.student.roll,
     }));
 
-    // 5) Count total students in that class
     const totalStudents = await User.countDocuments({
       role: "student",
       className: activeClass,
@@ -126,12 +123,99 @@ export const getPresentStudentsForFaculty = async (req, res) => {
 
     return res.json({
       className: activeClass,
-      presentCount: presentStudents.length,
+      period: currentPeriod,
+      students: present,
+      presentCount: present.length,
       totalStudents,
-      students: presentStudents,
     });
   } catch (err) {
-    console.error("getPresentStudentsForFaculty:", err);
+    console.error("getPresentStudentsForFaculty ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ----------------------------------------------------------
+   3) FULL DAY — All periods with present & absent
+----------------------------------------------------------- */
+export const getFacultyAttendanceForDay = async (req, res) => {
+  try {
+    const facultyId = req.user._id.toString();
+    const today = getTodayName();
+    const { start, end } = getTodayRange();
+
+    const ttList = await ClassTimetable.find({ day: today });
+
+    let className = null;
+    let todaysTimetable = null;
+
+    for (const tt of ttList) {
+      const teaches = tt.periods.some(
+        (p) =>
+          p.faculty?.toString() === facultyId ||
+          p.substituteFaculty?.toString() === facultyId
+      );
+
+      if (teaches) {
+        className = tt.className;
+        todaysTimetable = tt;
+        break;
+      }
+    }
+
+    if (!todaysTimetable) {
+      return res.json({
+        className: null,
+        periods: [],
+        message: "You are not teaching any class today.",
+      });
+    }
+
+    const allStudents = await User.find({
+      role: "student",
+      className,
+    }).select("name roll");
+
+    const fullDay = [];
+
+    for (const p of todaysTimetable.periods) {
+      const records = await Attendance.find({
+        className,
+        period: p.period,
+        date: { $gte: start, $lte: end },
+      }).populate("student", "name roll");
+
+      const present = records.map((r) => ({
+        name: r.student.name,
+        roll: r.student.roll,
+      }));
+
+      const presentIds = new Set(
+        records.map((r) => r.student?._id?.toString())
+      );
+
+      const absent = allStudents.filter(
+        (s) => !presentIds.has(s._id.toString())
+      );
+
+      fullDay.push({
+        period: p.period,
+        subject: p.subject,
+        start: p.start,
+        end: p.end,
+        presentCount: present.length,
+        absentCount: absent.length,
+        totalStudents: allStudents.length,
+        presentStudents: present,
+        absentStudents: absent,
+      });
+    }
+
+    return res.json({
+      className,
+      periods: fullDay,
+    });
+  } catch (err) {
+    console.error("getFacultyAttendanceForDay ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

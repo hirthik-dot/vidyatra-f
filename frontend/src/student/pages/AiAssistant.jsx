@@ -41,15 +41,18 @@ export default function AiAssistant() {
       {suggestions.length > 0 && (
         <div className="space-y-4">
           {suggestions.map((s, i) => (
-            <div key={i} className="p-4 bg-white shadow rounded-xl">
-              <p className="text-lg font-bold text-blue-700">
-                Free Period {s.period}
+            <div
+              key={i}
+              className="p-4 bg-white shadow rounded-xl border border-gray-200"
+            >
+              <p className="text-xl font-bold text-blue-700">
+                Period {s.period} ({s.start} - {s.end})
               </p>
-              <p className="text-gray-700">
-                {s.start} - {s.end}
-              </p>
-              <p className="text-green-700 mt-2 font-semibold">
-                Suggestion: {s.suggestion}
+
+              <p className="text-sm text-gray-500 mb-2">{s.label}</p>
+
+              <p className="text-green-700 font-semibold">
+                {s.suggestion}
               </p>
             </div>
           ))}
