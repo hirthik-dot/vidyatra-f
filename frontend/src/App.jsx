@@ -21,7 +21,7 @@ import StudentCommunication from "./student/pages/Communication";
 import StudentAiAssistant from "./student/pages/AiAssistant";
 import StudentFeedback from "./student/pages/Feedback";
 import Suggestions from "./student/pages/Suggestions";
-import StudentProfile from "./student/pages/profile";
+import StudentProfile from "./student/pages/Profile";
 
 // FACULTY PAGES
 import FacultyDashboard from "./faculty/pages/Dashboard";
