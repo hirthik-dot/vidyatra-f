@@ -1,19 +1,48 @@
+import axios from "axios";
+import { useEffect, useState } from "react";
+
 export default function StudentAssessments() {
-  const tests = [
-    { subject: "Maths", date: "2025-12-05", syllabus: "Algebra" },
-    { subject: "Science", date: "2025-12-07", syllabus: "Atoms" },
-  ];
+  const [assessments, setAssessments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const studentId = localStorage.getItem("studentId");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/student/assessments/${studentId}`
+        );
+        setAssessments(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [studentId]);
+
+  if (loading) return <div className="p-4">Loading assessments...</div>;
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">Assessments</h2>
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-3">Assessments</h2>
+      {assessments.length === 0 && <p>No assessments yet.</p>}
 
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        {tests.map((t, i) => (
-          <div key={i} className="p-4 border rounded-lg">
-            <p className="font-semibold">{t.subject}</p>
-            <p className="text-gray-600 text-sm">Date: {t.date}</p>
-            <p className="text-gray-600 text-sm">Syllabus: {t.syllabus}</p>
+      <div className="space-y-3">
+        {assessments.map((t) => (
+          <div key={t._id} className="border rounded-xl p-3 bg-white">
+            <div className="flex justify-between">
+              <h3 className="font-semibold">{t.title}</h3>
+              <span className="text-sm text-gray-500">
+                Date: {new Date(t.dueDate).toLocaleDateString()}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Class: {t.className}
+            </p>
           </div>
         ))}
       </div>

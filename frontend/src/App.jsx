@@ -37,6 +37,10 @@ import Behaviour from "./faculty/pages/Behaviour";
 import FacultyPerformance from "./faculty/pages/Performance";
 import CommunicationFaculty from "./faculty/pages/Communication";
 import FacultyProfile from "./faculty/pages/Profile";
+import AssignmentsAndAssessments from "./faculty/pages/AssignmentsAndAssessments.jsx";
+import LeaveApproval from "./faculty/pages/LeaveApproval";
+
+
 
 
 
@@ -90,6 +94,10 @@ export default function App() {
         <Route path="performance" element={<FacultyPerformance />} />
         <Route path="communication" element={<CommunicationFaculty />} />
          <Route path="profile" element={<FacultyProfile />} />
+         <Route path="/faculty/tasks" element={<AssignmentsAndAssessments />} />
+         <Route path="leave-od" element={<LeaveApproval />} />
+
+
 
       </Route>
 
