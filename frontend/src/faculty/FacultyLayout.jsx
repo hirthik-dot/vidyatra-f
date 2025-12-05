@@ -28,7 +28,8 @@ export default function FacultyLayout() {
     { label: "Behaviour", path: "behaviour", icon: BarChart },
     { label: "Performance", path: "performance", icon: BarChart },
     { label: "Communication", path: "communication", icon: MessageSquare },
-    { label: "Settings", path: "settings", icon: Settings },
+    { label: "Profile", path: "profile", icon: Settings },
+
   ];
 
   return <DashboardLayout sidebarItems={items} title="Faculty Panel" />;

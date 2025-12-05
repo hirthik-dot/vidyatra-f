@@ -8,6 +8,9 @@ import authRoutes from "./routes/authRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import resumeRouter from "./routes/resume.js";
+import facultyProfileRoutes from "./routes/facultyProfile.js";
+
 
 dotenv.config();
 const app = express();
@@ -22,6 +25,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/resume", resumeRouter);
+app.use("/api/faculty/profile", facultyProfileRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("VIDYATRA backend is running 🚀");

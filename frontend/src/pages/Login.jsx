@@ -3,7 +3,7 @@ import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [role, setRole] = useState("student"); // still used for UI label
+  const [role, setRole] = useState("student"); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -37,11 +37,17 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("role", data.user.role);
 
+      // ⭐ REQUIRED FIX — STORE facultyId for Profile page ⭐
+      if (data.user.role === "faculty") {
+        localStorage.setItem("facultyId", data.user.id);
+      }
+
       // Redirect based on REAL role from backend
       if (data.user.role === "student") navigate("/student/dashboard");
       else if (data.user.role === "faculty") navigate("/faculty/dashboard");
       else if (data.user.role === "admin") navigate("/admin/dashboard");
       else navigate("/login");
+
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -56,7 +62,6 @@ export default function Login() {
           VIDYATRA LOGIN
         </h1>
 
-        {/* Role selector is only for button label now (backend decides actual role) */}
         <div className="grid grid-cols-3 gap-3">
           {["student", "faculty", "admin"].map((r) => (
             <button

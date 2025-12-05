@@ -36,7 +36,9 @@ import AiAssistantFaculty from "./faculty/pages/AiAssistant";
 import Behaviour from "./faculty/pages/Behaviour";
 import FacultyPerformance from "./faculty/pages/Performance";
 import CommunicationFaculty from "./faculty/pages/Communication";
-import FacultySettings from "./faculty/pages/Settings";
+import FacultyProfile from "./faculty/pages/Profile";
+
+
 
 // ADMIN PAGES
 import AdminDashboard from "./admin/pages/Dashboard";
@@ -87,7 +89,8 @@ export default function App() {
         <Route path="behaviour" element={<Behaviour />} />
         <Route path="performance" element={<FacultyPerformance />} />
         <Route path="communication" element={<CommunicationFaculty />} />
-        <Route path="settings" element={<FacultySettings />} />
+         <Route path="profile" element={<FacultyProfile />} />
+
       </Route>
 
       {/* ADMIN */}
