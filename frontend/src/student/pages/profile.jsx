@@ -52,9 +52,7 @@ const initialStudentDetails = {
   ],
 
   skills: [],
-  certifications: [
-    { name: "", issuer: "", year: "" },
-  ],
+  certifications: [{ name: "", issuer: "", year: "" }],
   achievements: [],
 };
 
@@ -83,9 +81,24 @@ export default function StudentProfile() {
   // ------------------ MODALS -------------------
   const [showSkillModal, setShowSkillModal] = useState(false);
   const [showAchievementModal, setShowAchievementModal] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false); // NEW: Resume preview popup
 
   const [skillInput, setSkillInput] = useState("");
   const [achievementInput, setAchievementInput] = useState("");
+
+  // ---------- CLEAN AI TEXT ----------
+  const cleanResumeText = (text) => {
+    if (!text) return "";
+
+    return text
+      .replace(/```json[\s\S]*?```/g, "") // remove ```json blocks
+      .replace(/\{[\s\S]*?\}/g, "") // remove raw JSON objects
+      .replace(/Here is[\s\S]*?:/gi, "") // remove "Here is a Premium+ resume..." etc
+      .replace(/PREMIUM\+ RESUME RULES[\s\S]*/gi, "") // remove rules/instructions
+      .replace(/provided information/gi, "")
+      .replace(/====[\s\S]*/g, "") // remove separators / trailing junk
+      .trim();
+  };
 
   const addSkill = () => {
     if (skillInput.trim() === "") return;
@@ -130,8 +143,7 @@ export default function StudentProfile() {
           personalDetails: {
             fullName:
               savedProfile.personalDetails?.fullName || user?.name || "",
-            email:
-              savedProfile.personalDetails?.email || user?.email || "",
+            email: savedProfile.personalDetails?.email || user?.email || "",
             phone: savedProfile.personalDetails?.phone || "",
             dob: savedProfile.personalDetails?.dob || "",
             gender: savedProfile.personalDetails?.gender || "",
@@ -198,7 +210,7 @@ export default function StudentProfile() {
         { studentId, ...studentDetails }
       );
 
-      setResume(res.data.resume);
+      setResume(cleanResumeText(res.data.resume)); // CLEAN IT HERE
     } catch (err) {
       console.error("Resume generation failed", err);
       alert("AI Failed");
@@ -239,10 +251,13 @@ export default function StudentProfile() {
       </div>
     );
   }
+
+  // ----------------------------------------
+  // MAIN UI
+  // ----------------------------------------
   return (
     <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-[1600px] mx-auto">
-
+      <div className="max-w-5xl mx-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-gray-800">
@@ -252,178 +267,195 @@ export default function StudentProfile() {
           <button
             onClick={saveProfile}
             disabled={saving}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Profile"}
           </button>
         </div>
 
-        {/* MAIN LAYOUT — 50% LEFT (form) | 50% RIGHT (resume) */}
-        <div className="flex gap-4">
-
-          {/* LEFT PANEL — FORM */}
-          <div className="w-1/2 bg-white rounded-xl shadow-xl p-4 overflow-y-auto max-h-[88vh]">
-
-            {/* TABS */}
-            <div className="flex space-x-2 border-b pb-2 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-2 rounded-md text-sm font-semibold whitespace-nowrap ${
-                    activeTab === tab
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* TAB CONTENT */}
-            <div className="mt-4">
-              {activeTab === "Personal Details" && (
-                <PersonalDetails
-                  data={studentDetails.personalDetails}
-                  updateField={(s, f, v) =>
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      personalDetails: { ...prev.personalDetails, [f]: v },
-                    }))
-                  }
-                />
-              )}
-
-              {activeTab === "Academic Info" && (
-                <AcademicInfo
-                  data={studentDetails.academic}
-                  updateField={(section, field, value) =>
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      academic: { ...prev.academic, [field]: value },
-                    }))
-                  }
-                />
-              )}
-
-              {activeTab === "Internships" && (
-                <Internships
-                  data={studentDetails.internships}
-                  addItem={(section, item) =>
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      internships: [...prev.internships, item],
-                    }))
-                  }
-                  updateArrayField={(section, index, field, value) => {
-                    const copy = [...studentDetails.internships];
-                    copy[index][field] = value;
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      internships: copy,
-                    }));
-                  }}
-                />
-              )}
-
-              {activeTab === "Projects" && (
-                <Projects
-                  data={studentDetails.projects}
-                  addItem={(section, item) =>
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      projects: [...prev.projects, item],
-                    }))
-                  }
-                  updateArrayField={(section, index, field, value) => {
-                    const copy = [...studentDetails.projects];
-                    copy[index][field] = value;
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      projects: copy,
-                    }));
-                  }}
-                />
-              )}
-
-              {/* SKILLS TAB WITH NEW MODAL */}
-              {activeTab === "Skills" && (
-                <Skills
-                  data={studentDetails.skills}
-                  openModal={() => setShowSkillModal(true)}
-                />
-              )}
-
-              {/* CERTIFICATIONS */}
-              {activeTab === "Certifications" && (
-                <Certifications
-                  data={studentDetails.certifications}
-                  addItem={(section, item) =>
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      certifications: [...prev.certifications, item],
-                    }))
-                  }
-                  updateArrayField={(section, index, field, value) => {
-                    const copy = [...studentDetails.certifications];
-                    copy[index][field] = value;
-                    setStudentDetails((prev) => ({
-                      ...prev,
-                      certifications: copy,
-                    }));
-                  }}
-                />
-              )}
-
-              {/* ACHIEVEMENTS TAB WITH NEW MODAL */}
-              {activeTab === "Achievements" && (
-                <Achievements
-                  data={studentDetails.achievements}
-                  openModal={() => setShowAchievementModal(true)}
-                />
-              )}
-            </div>
+        {/* FULL-WIDTH FORM CARD */}
+        <div className="bg-white rounded-2xl shadow-xl p-4 overflow-y-auto max-h-[78vh]">
+          {/* TABS */}
+          <div className="flex space-x-2 border-b pb-2 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 py-2 rounded-md text-sm font-semibold whitespace-nowrap ${
+                  activeTab === tab
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
 
-          {/* RIGHT PANEL — FULL WIDTH RESUME PREVIEW */}
-          <div className="w-1/2 bg-white rounded-xl shadow-xl p-4 overflow-y-auto overflow-x-auto max-h-[88vh]">
+          {/* TAB CONTENT */}
+          <div className="mt-4">
+            {activeTab === "Personal Details" && (
+              <PersonalDetails
+                data={studentDetails.personalDetails}
+                updateField={(s, f, v) =>
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    personalDetails: { ...prev.personalDetails, [f]: v },
+                  }))
+                }
+              />
+            )}
 
-            <h2 className="text-xl font-semibold mb-2">Resume Preview</h2>
+            {activeTab === "Academic Info" && (
+              <AcademicInfo
+                data={studentDetails.academic}
+                updateField={(section, field, value) =>
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    academic: { ...prev.academic, [field]: value },
+                  }))
+                }
+              />
+            )}
 
-            {/* SMALL AI TEXT PREVIEW */}
-            <div className="border rounded-lg p-2 bg-gray-50 h-28 overflow-auto whitespace-pre-wrap text-xs mb-2">
-              {loadingResume
-                ? "Generating resume..."
-                : resume || "AI Resume will appear here after generation."}
-            </div>
+            {activeTab === "Internships" && (
+              <Internships
+                data={studentDetails.internships}
+                addItem={(section, item) =>
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    internships: [...prev.internships, item],
+                  }))
+                }
+                updateArrayField={(section, index, field, value) => {
+                  const copy = [...studentDetails.internships];
+                  copy[index][field] = value;
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    internships: copy,
+                  }));
+                }}
+              />
+            )}
 
-            {/* FULL WIDTH SCROLLABLE RESUME CANVAS */}
-            <div className="border rounded-lg bg-slate-100 p-3 overflow-auto w-full min-w-[900px] max-w-[900px] mx-auto">
-              <ResumeTemplate ref={resumeRef} studentDetails={studentDetails} resume={resume} />
-            </div>
+            {activeTab === "Projects" && (
+              <Projects
+                data={studentDetails.projects}
+                addItem={(section, item) =>
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    projects: [...prev.projects, item],
+                  }))
+                }
+                updateArrayField={(section, index, field, value) => {
+                  const copy = [...studentDetails.projects];
+                  copy[index][field] = value;
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    projects: copy,
+                  }));
+                }}
+              />
+            )}
 
-            <button
-              onClick={generateResume}
-              className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold text-sm"
-            >
-              Generate AI Resume
-            </button>
+            {activeTab === "Skills" && (
+              <Skills
+                data={studentDetails.skills}
+                openModal={() => setShowSkillModal(true)}
+              />
+            )}
 
-            <button
-              onClick={downloadDesignedPDF}
-              className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold text-sm"
-            >
-              Download Designed Resume PDF
-            </button>
+            {activeTab === "Certifications" && (
+              <Certifications
+                data={studentDetails.certifications}
+                addItem={(section, item) =>
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    certifications: [...prev.certifications, item],
+                  }))
+                }
+                updateArrayField={(section, index, field, value) => {
+                  const copy = [...studentDetails.certifications];
+                  copy[index][field] = value;
+                  setStudentDetails((prev) => ({
+                    ...prev,
+                    certifications: copy,
+                  }));
+                }}
+              />
+            )}
+
+            {activeTab === "Achievements" && (
+              <Achievements
+                data={studentDetails.achievements}
+                openModal={() => setShowAchievementModal(true)}
+              />
+            )}
           </div>
         </div>
+
+        {/* BUTTON TO OPEN RESUME PREVIEW POPUP */}
+        <button
+          onClick={async () => {
+            setShowResumeModal(true); // show popup instantly
+            setResume("");            // clear old resume
+            await generateResume();   // generate new one (shows loading inside modal)
+          }}
+          className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl text-lg font-semibold"
+        >
+          Generate Resume Preview
+        </button>
       </div>
+
+      {/* ===================== RESUME PREVIEW MODAL ===================== */}
+      {showResumeModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowResumeModal(false)}
+              className="absolute top-3 right-3 text-gray-600 hover:text-black text-3xl"
+            >
+              ×
+            </button>
+
+            <h2 className="text-2xl font-bold mb-4">Resume Preview</h2>
+
+            {/* LOADING STATE */}
+            {loadingResume && (
+              <div className="text-center py-10 text-lg font-semibold text-gray-600">
+                🔄 Generating resume… Please wait
+              </div>
+            )}
+
+            {/* DESIGNED RESUME ONLY */}
+            {!loadingResume && (
+              <>
+                <div className="border rounded-lg bg-slate-50 p-4 max-h-[60vh] overflow-y-auto">
+                  <div ref={resumeRef}>
+                    <ResumeTemplate
+                      studentDetails={studentDetails}
+                      resume={resume}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={downloadDesignedPDF}
+                  className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold"
+                >
+                  Download PDF
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ---------------------- SKILL MODAL ---------------------- */}
       {showSkillModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white w-[400px] p-6 rounded-2xl shadow-2xl animate-fadeIn">
+          <div className="bg-white w-[400px] p-6 rounded-2xl shadow-2xl">
             <h2 className="text-xl font-semibold mb-4">Add Skill</h2>
 
             <input
@@ -455,7 +487,7 @@ export default function StudentProfile() {
       {/* ---------------------- ACHIEVEMENT MODAL ---------------------- */}
       {showAchievementModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white w-[400px] p-6 rounded-2xl shadow-2xl animate-fadeIn">
+          <div className="bg-white w-[400px] p-6 rounded-2xl shadow-2xl">
             <h2 className="text-xl font-semibold mb-4">Add Achievement</h2>
 
             <input
@@ -486,6 +518,7 @@ export default function StudentProfile() {
     </div>
   );
 }
+
 /* ---------------------------- INPUT COMPONENT ---------------------------- */
 function Input({ label, type = "text", value, onChange, textarea = false }) {
   return (
@@ -517,7 +550,6 @@ function Input({ label, type = "text", value, onChange, textarea = false }) {
 function PersonalDetails({ data, updateField }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
       <Input
         label="Full Name"
         value={data.fullName}
@@ -583,7 +615,6 @@ function PersonalDetails({ data, updateField }) {
 function AcademicInfo({ data, updateField }) {
   return (
     <div className="space-y-4">
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Course"
@@ -689,7 +720,6 @@ function Internships({ data, addItem, updateArrayField }) {
     <div className="space-y-6">
       {data.map((item, index) => (
         <div key={index} className="border p-4 rounded-xl bg-gray-50 space-y-3">
-
           <Input
             label="Company"
             value={item.company}
@@ -751,10 +781,8 @@ function Internships({ data, addItem, updateArrayField }) {
 function Projects({ data, addItem, updateArrayField }) {
   return (
     <div className="space-y-6">
-
       {data.map((proj, index) => (
         <div key={index} className="border p-4 rounded-xl bg-gray-50 space-y-3">
-
           <Input
             label="Project Title"
             value={proj.title}
@@ -816,7 +844,6 @@ function Projects({ data, addItem, updateArrayField }) {
 function Skills({ data, openModal }) {
   return (
     <div className="space-y-3">
-
       <div className="flex flex-wrap gap-2">
         {data.map((skill, i) => (
           <span
@@ -842,10 +869,8 @@ function Skills({ data, openModal }) {
 function Certifications({ data, addItem, updateArrayField }) {
   return (
     <div className="space-y-6">
-
       {data.map((cert, index) => (
         <div key={index} className="border p-4 rounded-xl bg-gray-50 space-y-3">
-
           <Input
             label="Certificate Name"
             value={cert.name}
@@ -897,7 +922,6 @@ function Certifications({ data, addItem, updateArrayField }) {
 function Achievements({ data, openModal }) {
   return (
     <div className="space-y-3">
-
       <ul className="list-disc pl-5">
         {data.map((item, i) => (
           <li key={i} className="text-gray-700 text-sm">

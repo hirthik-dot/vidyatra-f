@@ -57,13 +57,30 @@ export default function FacultyProfile() {
 
   const [activeTab, setActiveTab] = useState("Personal Details");
   const [facultyDetails, setFacultyDetails] = useState(initialFacultyDetails);
+
   const [resume, setResume] = useState("");
   const [loadingResume, setLoadingResume] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  const [showModal, setShowModal] = useState(false);
+
   const facultyId = localStorage.getItem("facultyId");
   const resumeRef = useRef(null);
+
+  // -------- CLEANING FUNCTION TO REMOVE UGLY AI TEXT --------
+  const cleanResumeText = (text) => {
+    if (!text) return "";
+
+    return text
+      .replace(/```json[\s\S]*?```/g, "")     // remove codeblock json
+      .replace(/\{[\s\S]*?\}/g, "")           // remove any json object
+      .replace(/Here is[\s\S]*?:/gi, "")      // remove "Here is a Premium resume..."
+      .replace(/PREMIUM\+ RESUME RULES[\s\S]*/gi, "") // remove rule section
+      .replace(/provided information/gi, "")
+      .replace(/====[\s\S]*/g, "")            // remove separators / system text
+      .trim();
+  };
 
   // ---------- Update Field ----------
   const updateField = (section, field, value) => {
@@ -76,15 +93,11 @@ export default function FacultyProfile() {
     }));
   };
 
-  // ---------- Load Profile + Merge ----------
+  // ---------- Load Profile ----------
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        if (!facultyId) {
-          console.warn("facultyId missing");
-          setLoadingProfile(false);
-          return;
-        }
+        if (!facultyId) return setLoadingProfile(false);
 
         const res = await axios.get(
           `http://localhost:5000/api/faculty/profile/${facultyId}`
@@ -117,9 +130,8 @@ export default function FacultyProfile() {
         };
 
         setFacultyDetails(merged);
-      } catch (err) {
-        console.error("Profile load error", err);
-      } finally {
+      } catch {}
+      finally {
         setLoadingProfile(false);
       }
     };
@@ -130,8 +142,6 @@ export default function FacultyProfile() {
   // ---------- Save Profile ----------
   const saveProfile = async () => {
     try {
-      if (!facultyId) return alert("facultyId missing");
-
       setSaving(true);
 
       await axios.post("http://localhost:5000/api/faculty/profile/save", {
@@ -140,8 +150,7 @@ export default function FacultyProfile() {
       });
 
       alert("Profile saved!");
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Error saving profile");
     } finally {
       setSaving(false);
@@ -158,9 +167,8 @@ export default function FacultyProfile() {
         { facultyId, ...facultyDetails }
       );
 
-      setResume(res.data.resume);
-    } catch (err) {
-      console.error(err);
+      setResume(cleanResumeText(res.data.resume)); // CLEAN AI RESPONSE
+    } catch {
       alert("Failed to generate resume");
     } finally {
       setLoadingResume(false);
@@ -170,13 +178,7 @@ export default function FacultyProfile() {
   // ---------- PDF Export ----------
   const downloadDesignedPDF = async () => {
     try {
-      if (!resumeRef.current) return alert("Generate resume first!");
-
-      const canvas = await html2canvas(resumeRef.current, {
-        scale: 2,
-        useCORS: true,
-      });
-
+      const canvas = await html2canvas(resumeRef.current, { scale: 2 });
       const img = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
 
@@ -185,30 +187,28 @@ export default function FacultyProfile() {
 
       pdf.addImage(img, "PNG", 0, 0, width, height);
       pdf.save("faculty_resume.pdf");
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("PDF export failed");
     }
   };
 
-  if (loadingProfile) {
+  if (loadingProfile)
     return (
-      <div className="min-h-screen flex justify-center items-center text-gray-500">
+      <div className="min-h-screen flex justify-center items-center">
         Loading profile...
       </div>
     );
-  }
 
   // ----------------------------------------------------
-  // UI STARTS HERE — Fixed 50/50 layout
+  // UI — FULL PAGE FORM (NO PREVIEW)
   // ----------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Faculty Profile & Resume Builder</h1>
+          <h1 className="text-3xl font-bold">Faculty Profile</h1>
 
           <button
             onClick={saveProfile}
@@ -218,112 +218,120 @@ export default function FacultyProfile() {
           </button>
         </div>
 
-        {/* 50% FORM — 50% RESUME */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* FULL WIDTH FORM */}
+        <div className="bg-white rounded-2xl shadow-xl p-6">
 
-          {/* LEFT SIDE FORM */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex space-x-3 border-b pb-3 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-sm font-semibold rounded-md ${
-                    activeTab === tab
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-6">
-              {activeTab === "Personal Details" && (
-                <PersonalDetails
-                  data={facultyDetails.personalDetails}
-                  updateField={updateField}
-                />
-              )}
-
-              {activeTab === "Bio / Education" && (
-                <Education
-                  data={facultyDetails.education}
-                  updateField={updateField}
-                />
-              )}
-
-              {activeTab === "Experience" && (
-                <Experience
-                  data={facultyDetails.experience}
-                  updateField={updateField}
-                />
-              )}
-
-              {activeTab === "Publications" && (
-                <Publications
-                  data={facultyDetails.publications}
-                  updateField={updateField}
-                />
-              )}
-
-              {activeTab === "Current Roles" && (
-                <Roles
-                  data={facultyDetails.roles}
-                  updateField={updateField}
-                />
-              )}
-
-              {activeTab === "Achievements" && (
-                <Achievements
-                  data={facultyDetails.achievements}
-                  updateField={updateField}
-                />
-              )}
-            </div>
+          <div className="flex space-x-3 border-b pb-3 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-semibold rounded-md ${
+                  activeTab === tab
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
 
-          {/* RIGHT — FULL WIDTH RESUME PREVIEW */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-semibold mb-3">Resume Preview</h2>
+          <div className="mt-6">
+            {activeTab === "Personal Details" && (
+              <PersonalDetails data={facultyDetails.personalDetails} updateField={updateField} />
+            )}
 
-            {/* AI Raw Text */}
-            <div className="border rounded-lg p-3 bg-gray-50 h-40 overflow-auto text-xs whitespace-pre-wrap mb-4">
-              {loadingResume ? "Generating..." : resume || "AI Resume will appear here."}
-            </div>
+            {activeTab === "Bio / Education" && (
+              <Education data={facultyDetails.education} updateField={updateField} />
+            )}
 
-            {/* FULL WIDTH DESIGNED RESUME */}
-            <div className="border rounded-lg bg-slate-100 h-[82vh] overflow-y-auto overflow-x-hidden p-4">
-              <div className="w-full" ref={resumeRef}>
-                <ResumeTemplate
-                  facultyDetails={facultyDetails}
-                  resume={resume}
-                />
-              </div>
-            </div>
+            {activeTab === "Experience" && (
+              <Experience data={facultyDetails.experience} updateField={updateField} />
+            )}
 
-            <button
-              onClick={generateResume}
-              className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl"
-            >
-              Generate AI Resume
-            </button>
+            {activeTab === "Publications" && (
+              <Publications data={facultyDetails.publications} updateField={updateField} />
+            )}
 
-            <button
-              onClick={downloadDesignedPDF}
-              className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl"
-            >
-              Download Designed Resume PDF
-            </button>
+            {activeTab === "Current Roles" && (
+              <Roles data={facultyDetails.roles} updateField={updateField} />
+            )}
+
+            {activeTab === "Achievements" && (
+              <Achievements data={facultyDetails.achievements} updateField={updateField} />
+            )}
           </div>
         </div>
+
+        {/* BUTTON TO OPEN POPUP */}
+        <button
+          onClick={async () => {
+            setShowModal(true);      // Popup opens instantly
+            setLoadingResume(true);  // Show loading inside popup
+            setResume("");           // Clear old
+            await generateResume();  // Generate new resume
+          }}
+          className="mt-6 w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl text-lg"
+        >
+          Generate Resume Preview
+        </button>
       </div>
+
+      {/* -------------------------------------------------- */}
+      {/*                MODAL POPUP                         */}
+      {/* -------------------------------------------------- */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative">
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-3 right-3 text-gray-600 hover:text-black text-3xl"
+            >
+              ×
+            </button>
+
+            <h2 className="text-2xl font-bold mb-4">Resume Preview</h2>
+
+            {/* LOADING */}
+            {loadingResume && (
+              <div className="text-center py-10 text-lg font-semibold text-gray-600">
+                🔄 Generating resume… Please wait
+              </div>
+            )}
+
+            {/* CLEAN RESUME PREVIEW ONLY */}
+            {!loadingResume && (
+              <>
+                <div className="border rounded-lg bg-slate-50 p-4 max-h-[60vh] overflow-y-auto">
+                  <div ref={resumeRef}>
+                    <ResumeTemplate
+                      facultyDetails={facultyDetails}
+                      resume={resume}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={downloadDesignedPDF}
+                  className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl"
+                >
+                  Download PDF
+                </button>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-// ---------------- INPUT ----------------
+/* ---------------- INPUT ---------------- */
 function Input({ label, type = "text", value, onChange, textarea = false }) {
   return (
     <div>
@@ -347,8 +355,7 @@ function Input({ label, type = "text", value, onChange, textarea = false }) {
   );
 }
 
-// ---------------- FORM SECTIONS ----------------
-
+/* ---------------- FORM SECTIONS ---------------- */
 function PersonalDetails({ data, updateField }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -379,7 +386,7 @@ function Experience({ data, updateField }) {
   return (
     <div className="space-y-4">
       <Input label="Current Position" value={data.currentPosition} onChange={(e) => updateField("experience", "currentPosition", e.target.value)} />
-      <Input label="Years of Experience" value={data.yearsOfExperience} type="number" onChange={(e) => updateField("experience", "yearsOfExperience", e.target.value)} />
+      <Input label="Years of Experience" type="number" value={data.yearsOfExperience} onChange={(e) => updateField("experience", "yearsOfExperience", e.target.value)} />
       <Input label="Past Roles" textarea value={data.pastRoles} onChange={(e) => updateField("experience", "pastRoles", e.target.value)} />
     </div>
   );
