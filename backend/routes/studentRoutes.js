@@ -1,4 +1,5 @@
 // backend/routes/studentRoutes.js
+
 import express from "express";
 import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
@@ -10,24 +11,20 @@ import { markStudentAttendance } from "../controllers/AttendanceController.js";
 import { getCurrentQR } from "../controllers/QrController.js";
 import { getLiveQR } from "../controllers/AttendanceController.js";
 
-
-
-
-
-
-
-
-
-
-
-
+import User from "../models/User.js";   // <-- IMPORTANT IMPORT ADDED HERE
 
 
 const router = express.Router();
 
+/* ==============================
+   STUDENT INTERESTS
+============================== */
 router.post("/save-interests", authMiddleware, saveInterests);
 
-// Dashboard data
+
+/* ==============================
+   STUDENT DASHBOARD
+============================== */
 router.get(
   "/dashboard",
   authMiddleware,
@@ -35,7 +32,10 @@ router.get(
   getStudentDashboard
 );
 
-// Today's timetable
+
+/* ==============================
+   STUDENT TIMETABLE
+============================== */
 router.get(
   "/timetable",
   authMiddleware,
@@ -43,7 +43,10 @@ router.get(
   getTodayTimetable
 );
 
-// AI suggestions (free period tasks)
+
+/* ==============================
+   AI SUGGESTIONS
+============================== */
 router.get(
   "/ai-suggestions",
   authMiddleware,
@@ -51,16 +54,38 @@ router.get(
   getAISuggestions
 );
 
+
+/* ==============================
+   MARK ATTENDANCE
+============================== */
 router.post(
   "/attendance/mark",
   authMiddleware,
   markStudentAttendance
 );
 
-router.get("/qr/current", getCurrentQR);
 
-router.get("/qr/current", getLiveQR);
-router.get("/ai-suggestions", authMiddleware, getAISuggestions);
+/* ==============================
+   LIVE QR
+============================== */
+router.get("/qr/current", getCurrentQR);
+router.get("/qr/live", getLiveQR);
+
+
+/* ==============================
+   GET ALL STUDENTS (COMMUNICATION)
+============================== */
+router.get("/", async (req, res) => {
+  try {
+    const students = await User.find({ role: "student" })
+      .select("_id name email department className");
+
+    res.status(200).json({ students });
+  } catch (err) {
+    console.error("Error fetching students:", err);
+    res.status(500).json({ message: "Error fetching students" });
+  }
+});
 
 
 export default router;

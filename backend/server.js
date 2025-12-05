@@ -11,6 +11,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import resumeRouter from "./routes/resume.js";
 import facultyProfileRoutes from "./routes/facultyProfile.js";
 import studentProfileRoutes from "./routes/studentProfile.js";
+import communicationRoutes from "./routes/communication.js";
+
 
 
 
@@ -32,6 +34,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/resume", resumeRouter);
 app.use("/api/faculty/profile", facultyProfileRoutes);
 app.use("/api/student/profile", studentProfileRoutes);
+app.use("/api/communication", communicationRoutes);
+
 
 
 app.get("/", (req, res) => {

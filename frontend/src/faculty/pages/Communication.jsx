@@ -1,283 +1,160 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function CommunicationFaculty() {
-  /* ---------------- NAV BAR ---------------- */
-  const [activePanel, setActivePanel] = useState("broadcast");
+const API_BASE = "http://localhost:5000/api/communication";
 
-  /* ---------------- BROADCAST PANEL ---------------- */
-  const [broadcastList, setBroadcastList] = useState([
-    { sender: "teacher", text: "Welcome students!" },
-  ]);
-  const [broadcastInput, setBroadcastInput] = useState("");
+export default function Communication() {
+  const facultyId = "6931412bd0a1260a8ee23916"; // Replace later with auth user
 
-  const sendBroadcast = (e) => {
-    e.preventDefault();
-    if (!broadcastInput.trim()) return;
-    setBroadcastList([...broadcastList, { sender: "teacher", text: broadcastInput }]);
-    setBroadcastInput("");
-  };
+  // Broadcast States
+  const [title, setTitle] = useState("");
+  const [bMessage, setBMessage] = useState("");
 
-  /* ---------------- INDIVIDUAL PANEL ---------------- */
-  const [students, setStudents] = useState([
-    { reg: "101", name: "Rohit", dept: "CSE", section: "A", online: true },
-    { reg: "102", name: "Meera", dept: "ECE", section: "B", online: false },
-  ]);
+  // Individual Message States
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [privateMessage, setPrivateMessage] = useState("");
+  const [conversation, setConversation] = useState([]);
 
-  const [selectedStudents, setSelectedStudents] = useState([]);
-  const [individualChats, setIndividualChats] = useState({
-    Rohit: [{ sender: "student", text: "Sir I need help." }],
-    Meera: [],
-  });
-  const [individualInput, setIndividualInput] = useState("");
+  // ====================== LOAD STUDENT LIST ======================
+  useEffect(() => {
+    fetch("http://localhost:5000/api/student")
+      .then((res) => res.json())
+      .then((data) => setStudents(data.students))
+      .catch(() => console.log("Error fetching students"));
+  }, []);
 
-  /* Toggle select student */
-  const toggleStudentSelect = (name) => {
-    setSelectedStudents((prev) =>
-      prev.includes(name)
-        ? prev.filter((s) => s !== name)
-        : [...prev, name]
-    );
-  };
-
-  /* Send message to selected students */
-  const sendIndividual = (e) => {
-    e.preventDefault();
-    if (!individualInput.trim() || selectedStudents.length === 0) return;
-
-    const updatedChats = { ...individualChats };
-    selectedStudents.forEach((name) => {
-      updatedChats[name] = [
-        ...(updatedChats[name] || []),
-        { sender: "teacher", text: individualInput },
-      ];
+  // ====================== SEND BROADCAST ======================
+  const sendBroadcast = async () => {
+    await fetch(`${API_BASE}/broadcast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        facultyId,
+        title,
+        body: bMessage,
+      }),
     });
 
-    setIndividualChats(updatedChats);
-    setIndividualInput("");
+    alert("Broadcast Sent ✔️");
+    setTitle("");
+    setBMessage("");
   };
 
-  /* ----------- ADD STUDENT ----------- */
-  const [newReg, setNewReg] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newDept, setNewDept] = useState("CSE");
-  const [newSection, setNewSection] = useState("A");
+  // ====================== SELECT STUDENT TO CHAT ======================
+  const openConversation = async (studentId) => {
+    setSelectedStudent(studentId);
 
-  const addStudent = () => {
-    if (!newReg.trim() || !newName.trim()) return;
-
-    const newStudent = {
-      reg: newReg,
-      name: newName,
-      dept: newDept,
-      section: newSection,
-      online: false,
-    };
-
-    setStudents([...students, newStudent]);
-    setIndividualChats({ ...individualChats, [newName]: [] });
-
-    setNewReg("");
-    setNewName("");
-    setNewDept("CSE");
-    setNewSection("A");
-  };
-
-  /* ----------- DELETE STUDENT ----------- */
-  const deleteStudent = (reg, name) => {
-    setStudents(students.filter((s) => s.reg !== reg));
-    const updatedChats = { ...individualChats };
-    delete updatedChats[name];
-    setIndividualChats(updatedChats);
-    setSelectedStudents(selectedStudents.filter((s) => s !== name));
-  };
-
-  /* ----------- ONLINE / OFFLINE TOGGLE ----------- */
-  const toggleOnline = (reg) => {
-    setStudents(
-      students.map((s) => (s.reg === reg ? { ...s, online: !s.online } : s))
+    const res = await fetch(
+      `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${studentId}`
     );
+    const data = await res.json();
+
+    setConversation(data);
+  };
+
+  // ====================== SEND PRIVATE MESSAGE ======================
+  const sendPrivateMessage = async () => {
+    if (!selectedStudent) return alert("Select a student first");
+
+    await fetch(`${API_BASE}/private/faculty`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        facultyId,
+        studentId: selectedStudent,
+        body: privateMessage,
+      }),
+    });
+
+    openConversation(selectedStudent);
+    setPrivateMessage("");
   };
 
   return (
     <div className="p-6 space-y-6">
-      {/* ---------------- NAVIGATION BAR ---------------- */}
-      <div className="flex gap-4 border-b pb-3">
+
+      {/* ------------------ BROADCAST SECTION ------------------ */}
+      <div className="bg-white p-6 rounded shadow">
+        <h2 className="text-xl font-bold mb-2">Broadcast Message</h2>
+
+        <input
+          className="border p-2 rounded w-full mb-2"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <textarea
+          className="border p-2 rounded w-full mb-3"
+          rows="3"
+          placeholder="Message to all students"
+          value={bMessage}
+          onChange={(e) => setBMessage(e.target.value)}
+        />
+
         <button
-          onClick={() => setActivePanel("broadcast")}
-          className={`px-4 py-2 rounded-lg ${
-            activePanel === "broadcast" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={sendBroadcast}
         >
-          Broadcast Messages
-        </button>
-        <button
-          onClick={() => setActivePanel("individual")}
-          className={`px-4 py-2 rounded-lg ${
-            activePanel === "individual" ? "bg-purple-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          Individual Messages
+          Send Broadcast
         </button>
       </div>
 
-      {/* ---------------- BROADCAST PANEL ---------------- */}
-      {activePanel === "broadcast" && (
-        <div>
-          <h2 className="text-2xl font-bold text-blue-700 mb-4">
-            Broadcast Message Panel
-          </h2>
-          <div className="bg-white p-6 rounded-xl shadow h-[450px] flex flex-col">
-            <div className="flex-1 overflow-y-auto space-y-3">
-              {broadcastList.map((b, i) => (
-                <div
-                  key={i}
-                  className="p-3 rounded-lg bg-blue-500 text-white max-w-xs"
-                >
-                  {b.text}
-                </div>
-              ))}
+      {/* ------------------ PRIVATE CHAT SECTION ------------------ */}
+      <div className="grid grid-cols-3 gap-4">
+
+        {/* STUDENT LIST */}
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="font-bold text-lg mb-2">Students</h2>
+
+          {students.map((std) => (
+            <div
+              key={std._id}
+              onClick={() => openConversation(std._id)}
+              className={`cursor-pointer p-2 rounded mb-1 ${
+                selectedStudent === std._id ? "bg-blue-200" : "bg-gray-100"
+              }`}
+            >
+              {std.name}
             </div>
-            <form onSubmit={sendBroadcast} className="flex gap-2 mt-4">
-              <input
-                value={broadcastInput}
-                onChange={(e) => setBroadcastInput(e.target.value)}
-                className="w-full p-3 border rounded-lg"
-                placeholder="Broadcast to all students..."
-              />
-              <button className="bg-blue-600 text-white px-4 rounded-lg">Send</button>
-            </form>
-          </div>
+          ))}
         </div>
-      )}
 
-      {/* ---------------- INDIVIDUAL PANEL ---------------- */}
-      {activePanel === "individual" && (
-        <div>
-          <h2 className="text-2xl font-bold text-purple-700 mb-4">
-            Individual Message Panel
-          </h2>
+        {/* CONVERSATION */}
+        <div className="col-span-2 bg-white p-4 rounded shadow flex flex-col">
+          <h2 className="font-bold text-lg mb-2">Conversation</h2>
 
-          <div className="grid grid-cols-4 gap-4 h-[500px]">
-            {/* STUDENT LIST + ADD */}
-            <div className="bg-gray-100 p-4 rounded-xl shadow">
-              <h3 className="font-semibold text-lg mb-3">Students</h3>
-
-              {/* Add Student */}
-               <select
-                  value={newDept}
-                  onChange={(e) => setNewDept(e.target.value)}
-                  className="w-full p-2 border rounded"
-                >
-                  <option>CSE</option>
-                  <option>ECE</option>
-                  <option>EEE</option>
-                  <option>MECH</option>
-                </select>
-                <select
-                  value={newSection}
-                  onChange={(e) => setNewSection(e.target.value)}
-                  className="w-full p-2 border rounded"
-                >
-                  <option>A</option>
-                  <option>B</option>
-                  <option>C</option>
-                </select>
-              <div className="space-y-2 mb-4">
-                <input
-                  value={newReg}
-                  onChange={(e) => setNewReg(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  placeholder="Register Number"
-                />
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  placeholder="Student Name"
-                />
-               
-                <button
-                  onClick={addStudent}
-                  className="w-full bg-green-600 text-white p-2 rounded-lg"
-                >
-                  Add Student
-                </button>
+          <div className="flex-1 bg-gray-100 p-2 rounded overflow-y-auto mb-3">
+            {conversation.map((msg) => (
+              <div
+                key={msg._id}
+                className={`p-1 ${
+                  msg.from === facultyId ? "text-right" : "text-left"
+                }`}
+              >
+                <span className="inline-block bg-white px-2 py-1 rounded shadow">
+                  {msg.body}
+                </span>
               </div>
-
-              {/* Student List with Multi-Select */}
-              {students.map((s) => (
-                <div key={s.reg} className="mb-2 p-2 rounded-lg bg-white shadow">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedStudents.includes(s.name)}
-                      onChange={() => toggleStudentSelect(s.name)}
-                    />
-                    <div>
-                      <span className="font-medium">{s.reg} - {s.name}</span><br />
-                      <span className="text-sm text-gray-600">{s.dept} • Section {s.section}</span>
-                    </div>
-                    {/* Online indicator */}
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleOnline(s.reg);
-                      }}
-                      className={`inline-block w-3 h-3 rounded-full ml-auto cursor-pointer ${
-                        s.online ? "bg-green-500" : "bg-red-500"
-                      }`}
-                      title={s.online ? "Online — click to set offline" : "Offline — click to set online"}
-                    ></span>
-                  </label>
-                  <button
-                    onClick={() => deleteStudent(s.reg, s.name)}
-                    className="text-xs text-red-600 underline mt-1"
-                  >
-                    Remove student
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* CHAT WINDOW */}
-            <div className="col-span-3 bg-white p-5 rounded-xl shadow flex flex-col">
-              {selectedStudents.length === 0 ? (
-                <p className="text-gray-500 text-center mt-20">
-                  Select students to start chatting
-                </p>
-              ) : (
-                <>
-                  {/* Show chat of first selected student */}
-                  <div className="flex-1 overflow-y-auto space-y-3">
-                    {(individualChats[selectedStudents[0]] || []).map((msg, i) => (
-                      <div
-                        key={i}
-                        className={`p-3 rounded-lg max-w-xs ${
-                          msg.sender === "teacher"
-                            ? "ml-auto bg-purple-600 text-white"
-                            : "bg-gray-200 text-gray-800"
-                        }`}
-                      >
-                        {msg.text}
-                      </div>
-                    ))}
-                  </div>
-
-                  <form onSubmit={sendIndividual} className="flex gap-2 mt-4">
-                    <input
-                      value={individualInput}
-                      onChange={(e) => setIndividualInput(e.target.value)}
-                      className="w-full p-3 border rounded-lg"
-                      placeholder={`Message ${selectedStudents[0]}${selectedStudents.length > 1 ? ` & ${selectedStudents.length - 1} others` : ""}...`}
-                    />
-                    <button className="bg-purple-600 text-white px-4 rounded-lg">Send</button>
-                  </form>
-                </>
-              )}
-            </div>
+            ))}
           </div>
+
+          {/* SEND PRIVATE MESSAGE */}
+          <input
+            className="border p-2 rounded w-full"
+            placeholder="Type private message"
+            value={privateMessage}
+            onChange={(e) => setPrivateMessage(e.target.value)}
+          />
+
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded mt-2"
+            onClick={sendPrivateMessage}
+          >
+            Send
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
