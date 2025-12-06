@@ -2,11 +2,25 @@
 import express from "express";
 import authMiddleware from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
-import { markFacultyAbsent } from "../controllers/AdminTimetableController.js";
 import User from "../models/User.js";
 import { seedWeeklyTimetable } from "../controllers/seedTimetableController.js";
 import { protectAdmin } from "../middleware/AuthMiddleware.js";
 import { getAllStudents } from "../controllers/AdminController.js";
+import { getClassStats } from "../controllers/adminClassController.js";
+
+import {
+  getTimetableMeta,
+  getClassTimetable,
+  saveClassTimetable,
+  duplicateTimetable,
+} from "../controllers/adminTimetableController.js";
+
+import { getDashboardStats } from "../controllers/adminDashboardController.js";
+
+
+
+
+
 
 
 
@@ -22,7 +36,6 @@ router.get("/faculty-list", authMiddleware, requireRole("admin"), async (req, re
 
 router.get("/students", protectAdmin, getAllStudents);
 
-router.post("/faculty/absent", authMiddleware, requireRole("admin"), markFacultyAbsent);
 router.get("/seed-timetable", seedWeeklyTimetable);
 router.get(
   "/dashboard",
@@ -35,6 +48,48 @@ router.get(
     });
   }
 );
+
+router.get(
+  "/classes",
+  authMiddleware,
+  requireRole("admin"),
+  getClassStats
+);
+
+// TIMETABLE META (faculty + subjects)
+router.get(
+  "/timetable/meta",
+  authMiddleware,
+  requireRole("admin"),
+  getTimetableMeta
+);
+
+// GET weekly timetable of a class
+router.get(
+  "/timetable/:className",
+  authMiddleware,
+  requireRole("admin"),
+  getClassTimetable
+);
+
+// SAVE weekly timetable of a class
+router.post(
+  "/timetable/save",
+  authMiddleware,
+  requireRole("admin"),
+  saveClassTimetable
+);
+
+// DUPLICATE timetable from one class to another
+router.post(
+  "/timetable/duplicate",
+  authMiddleware,
+  requireRole("admin"),
+  duplicateTimetable
+);
+
+router.get("/dashboard", authMiddleware, requireRole("admin"), getDashboardStats);
+
 
 // Example: admin can list all users later
 // router.get("/users", protect, requireRole("admin"), ...)

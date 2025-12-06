@@ -19,6 +19,14 @@ import studentProfileRoutes from "./routes/studentProfile.js";
 import communicationRoutes from "./routes/communication.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 import studentChatbotRoutes from "./routes/studentChatbotRoutes.js";
+import adminStudentRoutes from "./routes/adminStudentRoutes.js";
+import adminFacultyRoutes from "./routes/adminFacultyRoutes.js";
+import studentAssessmentRoutes from "./routes/studentAssessmentRoutes.js";
+import studentAssessmentSubmitRoutes from "./routes/studentAssessmentSubmitRoutes.js";
+import facultyAssessmentRoutes from "./routes/facultyAssessmentRoutes.js";
+
+
+
 
 
 
@@ -72,6 +80,20 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/student", studentChatbotRoutes);
+
+app.use("/api/admin", adminStudentRoutes);
+
+app.use("/api/admin", adminFacultyRoutes);
+
+
+app.use("/api/student/assessments", studentAssessmentRoutes);
+
+app.use("/api/student/assessment", studentAssessmentSubmitRoutes);
+
+app.use("/api/faculty/assessments", facultyAssessmentRoutes);
+
+
+
 
 
 

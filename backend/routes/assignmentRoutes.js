@@ -80,10 +80,17 @@ router.post(
   }
 );
 
-// CREATE ASSESSMENT
+// CREATE ASSESSMENT (with questions, Google-form style)
 router.post("/faculty/assessments/create", async (req, res) => {
   try {
-    const { facultyId, title, className, dueDate } = req.body;
+    const {
+      facultyId,
+      title,
+      className,
+      dueDate,
+      instructions,
+      questions,
+    } = req.body;
 
     if (!facultyId || !title || !className || !dueDate) {
       return res.status(400).json({
@@ -91,11 +98,16 @@ router.post("/faculty/assessments/create", async (req, res) => {
       });
     }
 
+    // questions will be an array from frontend
+    const safeQuestions = Array.isArray(questions) ? questions : [];
+
     const assessment = await Assessment.create({
       facultyId,
       title,
       className,
       dueDate: new Date(dueDate),
+      instructions: instructions || "",
+      questions: safeQuestions,
     });
 
     res.json({ message: "Assessment created", assessment });
@@ -146,5 +158,19 @@ router.get("/student/assessments/:studentId", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.get("/faculty/assignments/all/:facultyId", async (req, res) => {
+  try {
+    const list = await Assignment.find({
+      facultyId: req.params.facultyId,
+    }).sort({ createdAt: -1 });
+
+    res.json({ assignments: list });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 export default router;

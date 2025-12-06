@@ -1,66 +1,49 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Users, GraduationCap, ChevronRight } from "lucide-react";
 
 export default function CollegeStudents() {
-  const students = [
-    {
-      name: "Aarav Sharma",
-      regNo: "CSE101",
-      dept: "CSE",
-      section: "A",
-      year: "3rd Year",
-      dob: "2001-03-15",
-      email: "aarav.sharma@college.edu",
-      contact: "9876543210",
-      cgpa: 8.9,
-      performance: { "Data Structures": 88, "Java": 92, "Mathematics": 85 }
-    },
-    {
-      name: "Kavya Singh",
-      regNo: "ECE102",
-      dept: "ECE",
-      section: "B",
-      year: "2nd Year",
-      dob: "2002-06-22",
-      email: "kavya.singh@college.edu",
-      contact: "9876501234",
-      cgpa: 9.1,
-      performance: { "Digital Electronics": 78, "Signals & Systems": 80, "Mathematics": 90 }
-    },
-    {
-      name: "Rohit Mehta",
-      regNo: "CSE103",
-      dept: "CSE",
-      section: "A",
-      year: "1st Year",
-      dob: "2003-01-10",
-      email: "rohit.mehta@college.edu",
-      contact: "9876512345",
-      cgpa: 8.5,
-      performance: { "Programming Basics": 95, "Maths": 89, "Physics": 84 }
-    }
-  ];
-
-  const departments = ["CSE", "ECE", "ME", "EEE", "MBA"];
-  const sections = ["A", "B", "C"];
-  const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
-  const sortOptions = ["Name", "Reg No.", "CGPA"];
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState(null);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/student/all/full");
+        setStudents(res.data);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load students");
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  const departments = ["CSE", "ECE", "ME", "EEE", "MBA"];
+  const sections = ["A", "B", "C"];
+  const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+  const sortOptions = ["Name", "Reg No.", "CGPA"];
 
   const displayedStudents = useMemo(() => {
     let filtered = students.filter((s) => {
-      const matchesDept = !selectedDept || s.dept === selectedDept;
-      const matchesSection = !selectedSection || s.section === selectedSection;
-      const matchesYear = !selectedYear || s.year === selectedYear;
-      const matchesSearch =
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.regNo.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesDept && matchesSection && matchesYear && matchesSearch;
+      const mDept = !selectedDept || s.dept === selectedDept;
+      const mSection = !selectedSection || s.section === selectedSection;
+      const mYear = !selectedYear || s.year === selectedYear;
+      const mSearch =
+        s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.regNo?.toLowerCase().includes(searchTerm.toLowerCase());
+      return mDept && mSection && mYear && mSearch;
     });
 
     if (sortBy) {
@@ -68,178 +51,202 @@ export default function CollegeStudents() {
         if (sortBy === "Name") return a.name.localeCompare(b.name);
         if (sortBy === "Reg No.") return a.regNo.localeCompare(b.regNo);
         if (sortBy === "CGPA") return b.cgpa - a.cgpa;
-        return 0;
       });
     }
 
     return filtered;
   }, [students, selectedDept, selectedSection, selectedYear, searchTerm, sortBy]);
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h2 className="text-3xl font-bold text-blue-700 mb-6">College Students</h2>
-
-      {/* Filters + Sort */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Search by name or Reg No."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="p-3 border rounded-lg shadow-sm w-full md:w-1/4 focus:outline-none focus:ring-2 focus:ring-blue-300"
-        />
-
-        <select
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-          className="p-3 border rounded-lg shadow-sm w-full md:w-1/6 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <option value="">Select Department</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-
-        <select
-          value={selectedSection}
-          onChange={(e) => setSelectedSection(e.target.value)}
-          className="p-3 border rounded-lg shadow-sm w-full md:w-1/6 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <option value="">Select Section</option>
-          {sections.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          className="p-3 border rounded-lg shadow-sm w-full md:w-1/6 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <option value="">Select Year</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="p-3 border rounded-lg shadow-sm w-full md:w-1/6 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <option value="">Sort By</option>
-          {sortOptions.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen text-xl text-blue-600">
+        Loading Students...
       </div>
+    );
 
-      {/* Students Table */}
-      <div className="bg-white p-6 rounded-2xl shadow overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+  if (error)
+    return (
+      <div className="text-red-600 text-center p-6 text-xl">{error}</div>
+    );
+
+  return (
+    <div className="p-6 min-h-screen bg-gradient-to-bl from-indigo-100 via-white to-blue-100">
+      {/* PAGE HEADER */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
+        <GraduationCap size={40} className="text-indigo-700" />
+        <h2 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+          Student Directory
+        </h2>
+      </motion.div>
+
+      {/* FILTER PANEL */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg p-5 border border-white/50 mb-6"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-3 top-3 text-gray-500" size={20} />
+            <input
+              type="text"
+              placeholder="Search by name or Reg No."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 p-3 rounded-xl border shadow-sm focus:ring focus:ring-indigo-300"
+            />
+          </div>
+
+          {/* Dropdowns */}
+          <select
+            className="p-3 rounded-xl border shadow-sm"
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+          >
+            <option value="">Department</option>
+            {departments.map((d) => (
+              <option key={d}>{d}</option>
+            ))}
+          </select>
+
+          <select
+            className="p-3 rounded-xl border shadow-sm"
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+          >
+            <option value="">Section</option>
+            {sections.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+
+          <select
+            className="p-3 rounded-xl border shadow-sm"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            <option value="">Year</option>
+            {years.map((y) => (
+              <option key={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sort */}
+        <div className="mt-4">
+          <select
+            className="p-3 rounded-xl border shadow-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="">Sort By</option>
+            {sortOptions.map((opt) => (
+              <option key={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      </motion.div>
+
+      {/* TABLE */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-white rounded-3xl p-6 shadow-xl border border-gray-200 overflow-x-auto"
+      >
+        <table className="w-full text-left">
           <thead>
-            <tr className="border-b text-gray-600">
+            <tr className="text-gray-600 border-b">
               <th className="p-3">Name</th>
               <th className="p-3">Reg No.</th>
               <th className="p-3">Dept</th>
               <th className="p-3">Section</th>
               <th className="p-3">Year</th>
               <th className="p-3">CGPA</th>
+              <th className="p-3 text-right"></th>
             </tr>
           </thead>
           <tbody>
-            {displayedStudents.map((s, i) => (
-              <tr
-                key={i}
-                className="border-b cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setSelectedStudent(s)}
-              >
-                <td className="p-3 font-medium">{s.name}</td>
-                <td className="p-3">{s.regNo}</td>
-                <td className="p-3">{s.dept}</td>
-                <td className="p-3">{s.section}</td>
-                <td className="p-3">{s.year}</td>
-                <td className="p-3">{s.cgpa}</td>
-              </tr>
-            ))}
-            {displayedStudents.length === 0 && (
-              <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
-                  No students found.
-                </td>
-              </tr>
-            )}
+            <AnimatePresence>
+              {displayedStudents.map((s) => (
+                <motion.tr
+                  key={s._id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setSelectedStudent(s)}
+                  className="border-b hover:bg-indigo-50 cursor-pointer"
+                >
+                  <td className="p-3 font-semibold">{s.name}</td>
+                  <td className="p-3">{s.regNo}</td>
+                  <td className="p-3">{s.dept}</td>
+                  <td className="p-3">{s.section}</td>
+                  <td className="p-3">{s.year}</td>
+                  <td className="p-3">{s.cgpa}</td>
+                  <td className="p-3 text-right">
+                    <ChevronRight className="inline text-indigo-600" />
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
           </tbody>
         </table>
-      </div>
+      </motion.div>
 
-      {/* Modal */}
-      {selectedStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
-            <button
-              onClick={() => setSelectedStudent(null)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 font-bold text-xl"
+      {/* STUDENT MODAL */}
+      <AnimatePresence>
+        {selectedStudent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl"
             >
-              &times;
-            </button>
+              <button
+                className="text-gray-500 float-right text-xl"
+                onClick={() => setSelectedStudent(null)}
+              >
+                ×
+              </button>
 
-            <div className="flex flex-col items-center text-center">
-         {/* Profile picture */}
-<img
-  src="/mnt/data/b07c5afa-ea74-49fc-992d-4f7274666e22.png" // default avatar image
-  alt="profile"
-  className="w-24 h-24 rounded-full mb-4"
-/>
+              <div className="text-center mt-4">
+                <img
+                  src={selectedStudent.avatar || "https://ui-avatars.com/api/?name=" + selectedStudent.name}
+                  className="w-24 h-24 rounded-full mx-auto mb-4 shadow-lg"
+                />
+                <h3 className="text-2xl font-bold">{selectedStudent.name}</h3>
+                <p className="text-gray-500">{selectedStudent.regNo}</p>
+                <p className="text-gray-500">{selectedStudent.dept} • {selectedStudent.section}</p>
+              </div>
 
-              <h3 className="text-xl font-bold">{selectedStudent.name}</h3>
-              <p className="text-gray-500">{selectedStudent.regNo} • {selectedStudent.dept} • {selectedStudent.section}</p>
-              <p className="text-gray-500">{selectedStudent.year}</p>
-            </div>
+              <div className="mt-6 space-y-2">
+                <p><strong>Email:</strong> {selectedStudent.email}</p>
+                <p><strong>Contact:</strong> {selectedStudent.contact}</p>
+                <p><strong>DOB:</strong> {selectedStudent.dob}</p>
+                <p><strong>CGPA:</strong> {selectedStudent.cgpa}</p>
+              </div>
 
-            <div className="mt-4 space-y-2 text-left">
-              <p><strong>DOB:</strong> {selectedStudent.dob}</p>
-              <p className="flex items-center gap-2">
-                <span className="w-5 h-5">
-                  {/* Email icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12h2m0 0h-2m2 0V8m0 4v4m-4-8h4m0 0h-4m0 0V4m0 4v4m-8 0h2m0 0H6m2 0V8m0 4v4m-4-8h4m0 0H4m0 0V4m0 4v4" />
-                  </svg>
-                </span>
-                {selectedStudent.email}
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="w-5 h-5">
-                  {/* Phone icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h2l3.6 7.59a1 1 0 01-.36 1.41l-1.74.87c1.8 2.87 4.77 5.84 7.64 7.64l.87-1.74a1 1 0 011.41-.36L19 19v2a2 2 0 01-2 2C8.477 21 3 15.523 3 8a2 2 0 012-2z" />
-                  </svg>
-                </span>
-                {selectedStudent.contact}
-              </p>
-              <p><strong>CGPA:</strong> {selectedStudent.cgpa}</p>
-            </div>
-
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Performance:</h4>
-              <ul className="list-disc list-inside">
-                {Object.entries(selectedStudent.performance).map(([sub, score]) => (
-                  <li key={sub}>{sub}: {score}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                className="mt-6 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow"
               >
                 Close
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

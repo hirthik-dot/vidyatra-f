@@ -10,6 +10,9 @@ import { saveInterests } from "../controllers/studentInterestController.js";
 import { markStudentAttendance } from "../controllers/AttendanceController.js";
 import { getCurrentQR } from "../controllers/QrController.js";
 import { getLiveQR } from "../controllers/AttendanceController.js";
+import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
+
+
 
 import User from "../models/User.js";   // <-- IMPORTANT IMPORT ADDED HERE
 
@@ -84,6 +87,30 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error("Error fetching students:", err);
     res.status(500).json({ message: "Error fetching students" });
+  }
+});
+
+router.get(
+  "/personal-material",
+  authMiddleware,
+  requireRole("student"),
+  generatePersonalMaterial
+);
+
+
+/* ==============================
+   FULL STUDENT LIST FOR UI PAGE
+============================== */
+router.get("/all/full", async (req, res) => {
+  try {
+    const students = await User.find({ role: "student" }).select(
+      "name regNo dept section year dob email contact cgpa performance avatar"
+    );
+
+    res.status(200).json(students);
+  } catch (err) {
+    console.error("Error fetching full students:", err);
+    res.status(500).json({ message: "Error fetching student data" });
   }
 });
 

@@ -16,6 +16,9 @@ import {
   getFacultyAttendanceForDay,   // ✅ ADDED IMPORT
 } from "../controllers/FacultyAttendanceController.js";
 
+import { getFacultyWeeklyTimetable } from "../controllers/FacultyTimetableController.js";
+
+
 const router = express.Router();
 
 // Helper: protects faculty routes
@@ -49,5 +52,13 @@ router.get("/attendance/current", protectFaculty, getPresentStudentsForFaculty);
 
 // ⭐ NEW → Get FULL day attendance
 router.get("/attendance/day", protectFaculty, getFacultyAttendanceForDay);
+
+router.get(
+  "/timetable/weekly",
+  authMiddleware,
+  requireRole("faculty"),
+  getFacultyWeeklyTimetable
+);
+
 
 export default router;

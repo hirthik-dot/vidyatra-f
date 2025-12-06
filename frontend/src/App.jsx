@@ -22,6 +22,9 @@ import StudentAiAssistant from "./student/pages/AiAssistant";
 import StudentFeedback from "./student/pages/Feedback";
 import Suggestions from "./student/pages/Suggestions";
 import StudentProfile from "./student/pages/Profile";
+import StudyMaterial from "./student/pages/StudyMaterial";
+import AttemptAssessment from "./student/pages/AttemptAssessment";
+
 
 // FACULTY PAGES
 import FacultyDashboard from "./faculty/pages/Dashboard";
@@ -39,6 +42,8 @@ import CommunicationFaculty from "./faculty/pages/Communication";
 import FacultyProfile from "./faculty/pages/Profile";
 import AssignmentsAndAssessments from "./faculty/pages/AssignmentsAndAssessments.jsx";
 import LeaveApproval from "./faculty/pages/LeaveApproval";
+import AssessmentSubmissions from "./faculty/pages/AssessmentSubmissions";
+
 
 
 
@@ -76,6 +81,10 @@ export default function App() {
         <Route path="feedback" element={<StudentFeedback />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="profile" element={<StudentProfile />} />
+        <Route path="study-material" element={<StudyMaterial />} />
+        <Route path="/student/assessment/:id" element={<AttemptAssessment />} />
+
+
       </Route>
 
       {/* FACULTY */}
@@ -96,6 +105,11 @@ export default function App() {
          <Route path="profile" element={<FacultyProfile />} />
          <Route path="/faculty/tasks" element={<AssignmentsAndAssessments />} />
          <Route path="leave-od" element={<LeaveApproval />} />
+        <Route path="/faculty/assessment/submissions" element={<AssessmentSubmissions />} />
+        <Route
+  path="/faculty/assessments/:assessmentId/submissions"
+  element={<AssessmentSubmissions />}
+/>
 
 
 

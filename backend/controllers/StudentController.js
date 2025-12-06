@@ -1,9 +1,11 @@
 // backend/controllers/StudentController.js
+
 import Attendance from "../models/Attendance.js";
 import Assignment from "../models/Assignment.js";
 import Assessment from "../models/Assessment.js";
 import LeaveRequest from "../models/LeaveRequest.js";
 import BroadcastMessage from "../models/BroadcastMessage.js";
+import ClassTimetable from "../models/ClassTimetable.js"; // ✅ FIXED IMPORT
 
 export const getStudentDashboard = async (req, res) => {
   try {
@@ -14,65 +16,98 @@ export const getStudentDashboard = async (req, res) => {
     }
 
     const studentId = user._id;
-    const className = user.className || null;
+    const className = user.className;
 
-    // -----------------------------------------
-    // REAL-TIME ATTENDANCE
-    // -----------------------------------------
-    const attendanceRecords = await Attendance.find({ student: studentId });
+    /*
+     * ---------------------------------------------------------
+     * 1️⃣ TODAY'S ATTENDANCE (FIXED)
+     * ---------------------------------------------------------
+     */
 
-    const totalSessions = attendanceRecords.length;
-    const presentSessions = attendanceRecords.filter(
-      (r) => r.status === "present"
-    ).length;
+    // Today's date range
+    const todayStr = new Date().toISOString().split("T")[0];
+    const startOfDay = new Date(todayStr + "T00:00:00");
+    const endOfDay = new Date(todayStr + "T23:59:59");
 
-    const attendancePercent = totalSessions
-      ? Math.round((presentSessions / totalSessions) * 100)
-      : 0;
+    // Weekday = "Monday", "Tuesday" etc.
+    const dayName = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+    });
 
-    // -----------------------------------------
-    // REAL-TIME ASSIGNMENTS PENDING
-    // -----------------------------------------
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's timetable for this class
+    const classTimetable = await ClassTimetable.findOne({
+      className: className,
+      day: dayName,
+    });
+
+    // Total expected periods today
+    const totalPeriods = classTimetable?.periods?.length || 0;
+
+    // Attendance records for today
+    const todayAttendance = await Attendance.find({
+      student: studentId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    // Present count
+    const presentToday = todayAttendance.length;
+
+    // Attendance percentage
+    const attendancePercent =
+      totalPeriods > 0
+        ? Math.round((presentToday / totalPeriods) * 100)
+        : 0;
+
+    /*
+     * ---------------------------------------------------------
+     * 2️⃣ ASSIGNMENTS PENDING
+     * ---------------------------------------------------------
+     */
 
     let assignmentsPending = 0;
 
     if (className) {
       const allAssignments = await Assignment.find({ className });
+      const now = new Date();
 
       assignmentsPending = allAssignments.filter((a) => {
         if (!a.dueDate) return false;
-        const due = new Date(a.dueDate);
-        return due >= today;
+        return new Date(a.dueDate) >= now;
       }).length;
     }
 
-    // -----------------------------------------
-    // REAL-TIME ASSESSMENTS (replace exam tile)
-    // -----------------------------------------
-    let assessmentCount = 0;
+    /*
+     * ---------------------------------------------------------
+     * 3️⃣ ASSESSMENTS COUNT
+     * ---------------------------------------------------------
+     */
 
-    if (className) {
-      const assessments = await Assessment.find({ className });
-      assessmentCount = assessments.length;
-    }
+    const assessmentCount = await Assessment.countDocuments({
+      className,
+    });
 
-    // -----------------------------------------
-    // REAL-TIME LEAVE SUMMARY
-    // -----------------------------------------
+    /*
+     * ---------------------------------------------------------
+     * 4️⃣ LEAVE STATISTICS
+     * ---------------------------------------------------------
+     */
+
     const leaveRequests = await LeaveRequest.find({ studentId });
 
     const pendingLeave = leaveRequests.filter(
       (r) => r.status === "pending"
     ).length;
+
     const approvedLeave = leaveRequests.filter(
       (r) => r.status === "approved"
     ).length;
 
-    // -----------------------------------------
-    // RECENT ANNOUNCEMENTS
-    // -----------------------------------------
+    /*
+     * ---------------------------------------------------------
+     * 5️⃣ ANNOUNCEMENTS
+     * ---------------------------------------------------------
+     */
+
     const recentBroadcasts = await BroadcastMessage.find()
       .sort({ createdAt: -1 })
       .limit(5)
@@ -83,9 +118,12 @@ export const getStudentDashboard = async (req, res) => {
       return `${b.title} — ${from}`;
     });
 
-    // =====================================
-    // FINAL RESPONSE (NOW includes assessmentCount)
-    // =====================================
+    /*
+     * ---------------------------------------------------------
+     * 6️⃣ FINAL RESPONSE
+     * ---------------------------------------------------------
+     */
+
     return res.json({
       user: {
         id: user._id,
@@ -104,6 +142,7 @@ export const getStudentDashboard = async (req, res) => {
         announcements,
       },
     });
+
   } catch (err) {
     console.error("Dashboard error:", err);
     return res.status(500).json({ message: "Server error loading dashboard" });

@@ -12,14 +12,12 @@ import {
 } from "lucide-react";
 
 export default function AiAssistant() {
-  const [activeTab, setActiveTab] = useState("suggestions"); // "suggestions" | "mentor"
+  const [activeTab, setActiveTab] = useState("suggestions");
 
-  // ---------- FREE PERIOD SUGGESTIONS ----------
   const [suggestions, setSuggestions] = useState([]);
   const [suggLoading, setSuggLoading] = useState(true);
   const [suggMessage, setSuggMessage] = useState("");
 
-  // ---------- CHATBOT (AI MENTOR) ----------
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
@@ -32,14 +30,12 @@ export default function AiAssistant() {
 
   const chatEndRef = useRef(null);
 
-  // Auto-scroll chat to bottom on new messages
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatMessages, sending]);
 
-  // ---------- LOAD SUGGESTIONS ----------
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -74,7 +70,6 @@ export default function AiAssistant() {
     loadSuggestions();
   }, []);
 
-  // ---------- SEND MESSAGE TO AI MENTOR ----------
   const sendMessage = async () => {
     if (!input.trim() || sending) return;
 
@@ -135,7 +130,6 @@ export default function AiAssistant() {
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-3xl font-extrabold text-blue-700 flex items-center gap-2">
@@ -148,7 +142,6 @@ export default function AiAssistant() {
         </div>
       </div>
 
-      {/* TABS */}
       <div className="inline-flex rounded-full bg-gray-100 p-1">
         <button
           className={`px-4 py-2 text-sm font-semibold rounded-full flex items-center gap-2 ${
@@ -174,7 +167,6 @@ export default function AiAssistant() {
         </button>
       </div>
 
-      {/* CONTENT */}
       {activeTab === "suggestions" ? (
         <SmartSuggestionsView
           suggestions={suggestions}
@@ -195,29 +187,6 @@ export default function AiAssistant() {
           chatEndRef={chatEndRef}
         />
       )}
-
-      {/* QUICK PROMPTS BAR (Visible always at bottom) */}
-      <div className="mt-4 bg-white rounded-2xl shadow p-4 border border-blue-50">
-        <p className="text-xs font-semibold text-gray-500 mb-2">
-          Try asking your mentor:
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {[
-            "Explain pointers in C in simple way.",
-            "Make a 3-day revision plan for my Maths exam.",
-            "Suggest mini project ideas in web development.",
-            "How do I improve my data structures understanding?",
-          ].map((q, i) => (
-            <button
-              key={i}
-              onClick={() => handleQuickPrompt(q)}
-              className="px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-xs text-blue-700 border border-blue-100"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -233,7 +202,6 @@ function SmartSuggestionsView({
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* LEFT: SUMMARY + INFO */}
       <div className="lg:col-span-1 space-y-4">
         <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl p-5 shadow-xl">
           <h3 className="text-xl font-bold flex items-center gap-2">
@@ -241,15 +209,9 @@ function SmartSuggestionsView({
             Smart Free-Period Planner
           </h3>
           <p className="mt-2 text-sm text-blue-100">
-            Based on your **today’s timetable**, we detect free periods and give
-            you focused activities – revision, assignments, projects, or career
-            planning.
+            Based on your today’s timetable, we detect free periods and give you
+            focused activities.
           </p>
-          <ul className="mt-3 text-sm space-y-1 text-blue-100">
-            <li>• Uses current day timetable</li>
-            <li>• Shows period-wise smart tasks</li>
-            <li>• One-click “Ask AI Mentor” support</li>
-          </ul>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow border border-gray-100">
@@ -259,19 +221,17 @@ function SmartSuggestionsView({
           </h4>
           <p className="text-xs text-gray-600">
             When a teacher is absent or a period is free, our engine converts it
-            into a productive slot instead of wasted time – focusing on **weak
-            subjects, pending tasks, or skill development**.
+            into a productive slot.
           </p>
         </div>
       </div>
 
-      {/* RIGHT: SUGGESTIONS LIST */}
       <div className="lg:col-span-2">
         {suggLoading && (
           <div className="flex items-center gap-3 text-gray-600 bg-white rounded-2xl p-4 shadow">
             <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
             <span className="text-sm font-medium">
-              Analysing today’s timetable and free periods…
+              Analysing today’s timetable…
             </span>
           </div>
         )}
@@ -301,6 +261,7 @@ function SmartSuggestionsView({
                       <p className="font-semibold text-gray-900">{s.label}</p>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-2">
                     {renderDifficultyBadge(s.difficulty)}
                   </div>
@@ -310,18 +271,8 @@ function SmartSuggestionsView({
                   {s.suggestion}
                 </p>
 
+                {/* BUTTON AREA */}
                 <div className="mt-3 flex flex-wrap gap-2 justify-between">
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                    <span className="px-2 py-1 bg-gray-100 rounded-full">
-                      Focus: {s.focus || "Productive use of free time"}
-                    </span>
-                    {s.tag && (
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
-                        {s.tag}
-                      </span>
-                    )}
-                  </div>
-
                   <button
                     onClick={() =>
                       onAskAi(
@@ -333,6 +284,44 @@ function SmartSuggestionsView({
                     <Bot className="w-3 h-3" />
                     Ask AI Mentor
                   </button>
+
+                  {/* PERSONAL INTEREST BUTTON */}
+                  {(() => {
+                    const interests = [
+                      "Web Development",
+                      "Ethical Hacking",
+                      "Cybersecurity",
+                      "AI",
+                      "Machine Learning",
+                      "Data Science",
+                      "App Development",
+                      "Cloud",
+                      "Networks",
+                      "Software",
+                      "Competitive Programming",
+                    ];
+
+                    const isPersonal = interests.some((int) =>
+                      s.suggestion
+                        ?.toLowerCase()
+                        .includes(int.toLowerCase())
+                    );
+
+                    return (
+                      isPersonal && (
+                        <button
+                          onClick={() =>
+                            (window.location.href =
+                              "/student/study-material")
+                          }
+                          className="flex items-center gap-1 text-xs px-3 py-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          Get Study Material
+                        </button>
+                      )
+                    );
+                  })()}
                 </div>
               </div>
             ))}
@@ -355,7 +344,6 @@ function AiMentorChatView({
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* LEFT: INFO PANEL */}
       <div className="bg-white rounded-2xl shadow p-5 border border-gray-100 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
@@ -378,15 +366,12 @@ function AiMentorChatView({
         <div className="mt-3 p-3 rounded-xl bg-blue-50 text-xs text-blue-800 flex gap-2">
           <AlertCircle className="w-4 h-4 mt-0.5" />
           <p>
-            Try to ask **one clear question at a time** for best answers. You can
-            also paste exam questions, error messages, or topics.
+            Try to ask one clear question at a time for best answers.
           </p>
         </div>
       </div>
 
-      {/* RIGHT: CHAT AREA */}
       <div className="lg:col-span-2 bg-white rounded-2xl shadow border border-gray-100 flex flex-col h-[60vh]">
-        {/* CHAT MESSAGES */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-slate-50 to-white rounded-2xl">
           {chatMessages.map((msg, idx) => {
             const isUser = msg.role === "user";
@@ -426,7 +411,6 @@ function AiMentorChatView({
           <div ref={chatEndRef} />
         </div>
 
-        {/* INPUT AREA */}
         <div className="border-t p-3 flex items-center gap-2 bg-white rounded-b-2xl">
           <textarea
             rows={1}
@@ -441,6 +425,7 @@ function AiMentorChatView({
               }
             }}
           />
+
           <button
             onClick={sendMessage}
             disabled={sending || !input.trim()}

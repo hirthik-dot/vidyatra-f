@@ -170,3 +170,63 @@ export const claimFreePeriod = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+// 5) Get FULL WEEK timetable for this faculty
+export const getFacultyWeeklyTimetable = async (req, res) => {
+  try {
+    const facultyId = req.user._id.toString();
+
+    const DAYS = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    // Prepare weekly structure
+    const weekly = {};
+    DAYS.forEach((day) => {
+      weekly[day] = Array(8).fill(null); // 8 periods for UI
+    });
+
+    // Fetch all classes where this faculty is main or substitute
+    const tables = await ClassTimetable.find({
+      $or: [
+        { "periods.faculty": facultyId },
+        { "periods.substituteFaculty": facultyId }
+      ]
+    });
+
+    // Fill weekly structure
+    tables.forEach((entry) => {
+      const day = entry.day;
+
+      entry.periods.forEach((p) => {
+        const isTeaching =
+          p.faculty?.toString() === facultyId ||
+          p.substituteFaculty?.toString() === facultyId;
+
+        if (isTeaching) {
+          const idx = p.period - 1;
+
+          weekly[day][idx] = {
+            className: entry.className,
+            period: p.period,
+            subject: p.subject,
+            start: p.start,
+            end: p.end,
+            teacherAbsent: p.teacherAbsent,
+            isSubstitution: !!p.substituteFaculty,
+          };
+        }
+      });
+    });
+
+    return res.json({ weekly });
+
+  } catch (err) {
+    console.error("Weekly timetable error:", err);
+    return res.status(500).json({ message: "Error loading weekly timetable" });
+  }
+};
