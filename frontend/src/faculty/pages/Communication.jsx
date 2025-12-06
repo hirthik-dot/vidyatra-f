@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 const API_BASE = "http://localhost:5000/api/communication";
 
 export default function Communication() {
-  const facultyId = "6931412bd0a1260a8ee23916"; // Replace later with auth user
+  // ✔ Fetch correct faculty ID from localStorage
+  const facultyId = localStorage.getItem("facultyId");
 
   // Broadcast States
   const [title, setTitle] = useState("");
@@ -15,7 +16,7 @@ export default function Communication() {
   const [privateMessage, setPrivateMessage] = useState("");
   const [conversation, setConversation] = useState([]);
 
-  // ====================== LOAD STUDENT LIST ======================
+  // ====================== LOAD STUDENTS ======================
   useEffect(() => {
     fetch("http://localhost:5000/api/student")
       .then((res) => res.json())
@@ -40,7 +41,7 @@ export default function Communication() {
     setBMessage("");
   };
 
-  // ====================== SELECT STUDENT TO CHAT ======================
+  // ====================== OPEN CONVERSATION ======================
   const openConversation = async (studentId) => {
     setSelectedStudent(studentId);
 
@@ -48,7 +49,6 @@ export default function Communication() {
       `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${studentId}`
     );
     const data = await res.json();
-
     setConversation(data);
   };
 
@@ -129,7 +129,7 @@ export default function Communication() {
               <div
                 key={msg._id}
                 className={`p-1 ${
-                  msg.from === facultyId ? "text-right" : "text-left"
+                  msg.from?._id === facultyId ? "text-right" : "text-left"
                 }`}
               >
                 <span className="inline-block bg-white px-2 py-1 rounded shadow">
@@ -139,7 +139,6 @@ export default function Communication() {
             ))}
           </div>
 
-          {/* SEND PRIVATE MESSAGE */}
           <input
             className="border p-2 rounded w-full"
             placeholder="Type private message"

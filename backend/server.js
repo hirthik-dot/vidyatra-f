@@ -18,6 +18,9 @@ import facultyProfileRoutes from "./routes/facultyProfile.js";
 import studentProfileRoutes from "./routes/studentProfile.js";
 import communicationRoutes from "./routes/communication.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
+import studentChatbotRoutes from "./routes/studentChatbotRoutes.js";
+
+
 
 dotenv.config();
 const app = express();
@@ -67,6 +70,9 @@ app.use("/api/resume", resumeRouter);
 app.get("/", (req, res) => {
   res.send("VIDYATRA backend is running 🚀");
 });
+
+app.use("/api/student", studentChatbotRoutes);
+
 
 
 // Start server

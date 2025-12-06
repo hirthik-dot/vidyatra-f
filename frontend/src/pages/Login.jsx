@@ -30,24 +30,23 @@ export default function Login() {
         return;
       }
 
-      // Save credentials to localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("role", data.user.role);
 
-      // ⭐ FIX: store IDs for faculty & student profile autofill
+      const realId = data.user._id || data.user.id;
+
       if (data.user.role === "student") {
-        localStorage.setItem("studentId", data.user.id);
+        localStorage.setItem("studentId", realId);
       }
       if (data.user.role === "faculty") {
-        localStorage.setItem("facultyId", data.user.id);
+        localStorage.setItem("facultyId", realId);
       }
 
-      // Redirect by role
       if (data.user.role === "student") navigate("/student/dashboard");
       else if (data.user.role === "faculty") navigate("/faculty/dashboard");
       else if (data.user.role === "admin") navigate("/admin/dashboard");
-      else navigate("/login");
+
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -62,7 +61,6 @@ export default function Login() {
           VIDYATRA LOGIN
         </h1>
 
-        {/* Role selector (frontend only) */}
         <div className="grid grid-cols-3 gap-3">
           {["student", "faculty", "admin"].map((r) => (
             <button
@@ -70,9 +68,7 @@ export default function Login() {
               type="button"
               onClick={() => setRole(r)}
               className={`p-2 rounded-lg font-semibold capitalize ${
-                role === r
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700"
+                role === r ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
               }`}
             >
               {r}
@@ -99,9 +95,7 @@ export default function Login() {
             required
           />
 
-          {error && (
-            <p className="text-red-500 text-sm font-semibold">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
 
           <button
             type="submit"

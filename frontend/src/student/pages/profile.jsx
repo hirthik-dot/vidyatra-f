@@ -81,7 +81,7 @@ export default function StudentProfile() {
   // ------------------ MODALS -------------------
   const [showSkillModal, setShowSkillModal] = useState(false);
   const [showAchievementModal, setShowAchievementModal] = useState(false);
-  const [showResumeModal, setShowResumeModal] = useState(false); // NEW: Resume preview popup
+  const [showResumeModal, setShowResumeModal] = useState(false); // Resume preview popup
 
   const [skillInput, setSkillInput] = useState("");
   const [achievementInput, setAchievementInput] = useState("");
@@ -200,7 +200,7 @@ export default function StudentProfile() {
   };
 
   // ----------------------------------------
-  // GENERATE RESUME
+  // GENERATE RESUME (keeps modal open, shows skeleton)
   // ----------------------------------------
   const generateResume = async () => {
     try {
@@ -210,7 +210,7 @@ export default function StudentProfile() {
         { studentId, ...studentDetails }
       );
 
-      setResume(cleanResumeText(res.data.resume)); // CLEAN IT HERE
+      setResume(cleanResumeText(res.data.resume));
     } catch (err) {
       console.error("Resume generation failed", err);
       alert("AI Failed");
@@ -396,10 +396,10 @@ export default function StudentProfile() {
 
         {/* BUTTON TO OPEN RESUME PREVIEW POPUP */}
         <button
-          onClick={async () => {
+          onClick={() => {
             setShowResumeModal(true); // show popup instantly
-            setResume("");            // clear old resume
-            await generateResume();   // generate new one (shows loading inside modal)
+            setResume(""); // clear old resume
+            generateResume(); // start AI call; skeleton will show
           }}
           className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl text-lg font-semibold"
         >
@@ -421,14 +421,21 @@ export default function StudentProfile() {
 
             <h2 className="text-2xl font-bold mb-4">Resume Preview</h2>
 
-            {/* LOADING STATE */}
+            {/* SKELETON WHILE LOADING */}
             {loadingResume && (
-              <div className="text-center py-10 text-lg font-semibold text-gray-600">
-                🔄 Generating resume… Please wait
+              <div className="animate-pulse space-y-4">
+                <div className="h-6 bg-gray-300 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+                <div className="h-40 bg-gray-200 rounded"></div>
+                <div className="flex gap-4">
+                  <div className="h-24 flex-1 bg-gray-200 rounded"></div>
+                  <div className="h-24 flex-1 bg-gray-200 rounded"></div>
+                </div>
+                <div className="h-40 bg-gray-200 rounded"></div>
               </div>
             )}
 
-            {/* DESIGNED RESUME ONLY */}
+            {/* DESIGNED RESUME ONLY WHEN READY */}
             {!loadingResume && (
               <>
                 <div className="border rounded-lg bg-slate-50 p-4 max-h-[60vh] overflow-y-auto">

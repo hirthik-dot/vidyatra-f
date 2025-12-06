@@ -1,18 +1,30 @@
-const express = require('express');
+// backend/routes/communication.js
+import express from "express";
+import BroadcastMessage from "../models/BroadcastMessage.js";
+import PrivateMessage from "../models/PrivateMessage.js";
+import User from "../models/User.js";
+
 const router = express.Router();
 
-const BroadcastMessage = require('../models/BroadcastMessage');
-const PrivateMessage = require('../models/PrivateMessage');
-const User = require('../models/User');
+/* =====================================
+      📢 1) BROADCAST MESSAGES
+===================================== */
 
-
-/* =========================
-   1) BROADCAST MESSAGES
-========================= */
-
-router.post('/broadcast', async (req, res) => {
+// CREATE BROADCAST (Faculty Only)
+router.post("/broadcast", async (req, res) => {
   try {
     const { facultyId, title, body } = req.body;
+
+    console.log("Broadcast Faculty ID:", facultyId);
+
+    if (!facultyId) {
+      return res.status(400).json({ message: "facultyId missing" });
+    }
+
+    const faculty = await User.findById(facultyId);
+    if (!faculty || faculty.role !== "faculty") {
+      return res.status(400).json({ message: "Invalid faculty ID" });
+    }
 
     const newBroadcast = await BroadcastMessage.create({
       title,
@@ -22,111 +34,105 @@ router.post('/broadcast', async (req, res) => {
 
     res.status(201).json(newBroadcast);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error creating broadcast' });
+    console.error("Broadcast Error:", err);
+    res.status(500).json({ message: "Error creating broadcast" });
   }
 });
 
-router.get('/broadcast/student', async (req, res) => {
+// GET BROADCASTS FOR STUDENT
+router.get("/broadcast/student", async (req, res) => {
   try {
     const broadcasts = await BroadcastMessage.find()
       .sort({ createdAt: -1 })
-      .populate('faculty', 'name');
+      .populate("faculty", "name email");
 
     res.json(broadcasts);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching broadcasts' });
+    console.error("Fetch Broadcast Error:", err);
+    res.status(500).json({ message: "Error fetching broadcasts" });
   }
 });
 
-
-/* =========================
-   2) STUDENT LIST
-========================= */
-
-router.get('/students', async (req, res) => {
+/* =====================================
+      👥 2) STUDENT LIST
+===================================== */
+router.get("/students", async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
-      .select('_id name email department className');
+    const students = await User.find({ role: "student" })
+      .select("_id name email department className");
 
     res.json(students);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching students' });
+    console.error("Students Fetch Error:", err);
+    res.status(500).json({ message: "Error fetching students" });
   }
 });
 
+/* =====================================
+      💬 3) PRIVATE MESSAGES
+===================================== */
 
-/* =========================
-   3) PRIVATE MESSAGES
-========================= */
-
-// FACULTY -> STUDENT
-router.post('/private/faculty', async (req, res) => {
+// FACULTY → STUDENT
+router.post("/private/faculty", async (req, res) => {
   try {
     const { facultyId, studentId, body } = req.body;
 
-    const newMessage = new PrivateMessage({
+    console.log("PRIVATE FACULTY ID:", facultyId);
+
+    if (!facultyId) return res.status(400).json({ message: "facultyId missing" });
+
+    const newMsg = await PrivateMessage.create({
       from: facultyId,
       to: studentId,
       body,
     });
 
-    await newMessage.save();
-    res.status(201).json(newMessage);
+    res.status(201).json(newMsg);
   } catch (err) {
     console.error("Error sending private message:", err);
-    res.status(500).json({ message: 'Error sending private message' });
+    res.status(500).json({ message: "Error sending private message" });
   }
 });
 
-
-// STUDENT -> FACULTY
-router.post('/private/student', async (req, res) => {
+// STUDENT → FACULTY
+router.post("/private/student", async (req, res) => {
   try {
     const { studentId, facultyId, body } = req.body;
 
-    const newMessage = new PrivateMessage({
+    const newMsg = await PrivateMessage.create({
       from: studentId,
       to: facultyId,
       body,
     });
 
-    await newMessage.save();
-    res.status(201).json(newMessage);
+    res.status(201).json(newMsg);
   } catch (err) {
     console.error("Error sending reply:", err);
-    res.status(500).json({ message: 'Error sending reply' });
+    res.status(500).json({ message: "Error sending reply" });
   }
 });
 
-
-// GET ALL messages for student panel
-router.get('/private/student/:studentId', async (req, res) => {
+// GET all messages for student panel
+router.get("/private/student/:studentId", async (req, res) => {
   try {
     const { studentId } = req.params;
 
     const messages = await PrivateMessage.find({
-      $or: [
-        { from: studentId },
-        { to: studentId },
-      ],
+      $or: [{ from: studentId }, { to: studentId }],
     })
-      .populate('from', 'name role')
-      .populate('to', 'name role')
+      .populate("from", "name role")
+      .populate("to", "name role")
       .sort({ createdAt: 1 });
 
     res.json(messages);
   } catch (err) {
-    console.error("Error fetching student messages:", err);
-    res.status(500).json({ message: 'Error fetching student private messages' });
+    console.error("Fetch Student Messages Error:", err);
+    res.status(500).json({ message: "Error fetching private messages" });
   }
 });
 
-
-// GET FULL CONVERSATION (needed to show messages on click)
-router.get('/private/conversation', async (req, res) => {
+// GET full conversation for faculty or student
+router.get("/private/conversation", async (req, res) => {
   try {
     const { facultyId, studentId } = req.query;
 
@@ -136,16 +142,15 @@ router.get('/private/conversation', async (req, res) => {
         { from: studentId, to: facultyId },
       ],
     })
-      .populate('from', 'name role')
-      .populate('to', 'name role')
+      .populate("from", "name role")
+      .populate("to", "name role")
       .sort({ createdAt: 1 });
 
     res.json(messages);
   } catch (err) {
-    console.error("Error fetching full conversation:", err);
-    res.status(500).json({ message: 'Error fetching full conversation' });
+    console.error("Conversation Fetch Error:", err);
+    res.status(500).json({ message: "Error fetching full conversation" });
   }
 });
 
-
-module.exports = router;
+export default router;

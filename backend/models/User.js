@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
 
     email: { type: String, required: true, unique: true },
 
-    password: { type: String, required: true }, // stored as plain text
+    password: { type: String, required: true }, // plain text
 
     role: {
       type: String,
@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    // FACULTY ONLY
     subject: {
       type: String,
       required: function () {
@@ -21,12 +22,13 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // STUDENT ONLY
     department: { type: String, default: null },
     year: { type: Number, default: null },
     className: { type: String, default: null },
     interests: { type: [String], default: [] },
 
-    // NEW FIELD → class advisor faculty ID
+    // CLASS ADVISOR FOR STUDENTS
     classAdvisorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

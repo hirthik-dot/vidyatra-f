@@ -14,44 +14,34 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Debug: what frontend sent
-    console.log("Frontend sent:", email, password);
+    console.log("FRONTEND SENT:", email, password);
 
-    // 1) Check user exists
+    // Check user
     const user = await User.findOne({ email });
 
-    // Debug: is user found?
-    console.log("User found:", user);
+    console.log("FOUND USER:", user);
 
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password (user not found)" });
-    }
+    if (!user)
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // Debug: show DB password
-    console.log("DB password:", user.password);
+    if (password !== user.password)
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // 2) Plain text password check (NO hashing)
-    if (password !== user.password) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password (wrong password)" });
-    }
-
-    // 3) Generate token
+    // JWT
     const token = generateToken(user);
 
-    // 4) Send user + token
+    // Send BOTH id and _id for safety
     res.json({
       token,
       user: {
-        id: user._id,
+        _id: user._id,     // ALWAYS EXISTS
+        id: user._id,      // Fallback
         name: user.name,
         email: user.email,
         role: user.role,
       },
     });
+
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });

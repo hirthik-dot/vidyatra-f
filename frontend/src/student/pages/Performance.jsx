@@ -1,94 +1,215 @@
 import { useState } from "react";
+import {
+  TrendingUp,
+  BarChart2,
+  Award,
+  Activity,
+  PieChart,
+  Brain,
+  FileDown,
+} from "lucide-react";
 
 export default function StudentPerformancePage() {
   const [selectedSubject, setSelectedSubject] = useState(null);
 
+  // STATIC DEMO DATA (replace later with backend)
   const student = {
     name: "John Doe",
     roll: "CS101",
     class: "4A",
     subjects: [
-      { course: "Data Structures", marks: { assignment: 85, test: 90, final: 88 }, attendance: 92 },
-      { course: "Database Systems", marks: { assignment: 78, test: 82, final: 80 }, attendance: 88 },
-      { course: "Mathematics III", marks: { assignment: 65, test: 70, final: 68 }, attendance: 75 },
+      {
+        course: "Data Structures",
+        marks: { assignment: 85, test: 90, final: 88 },
+        attendance: 92,
+      },
+      {
+        course: "Database Systems",
+        marks: { assignment: 78, test: 82, final: 80 },
+        attendance: 88,
+      },
+      {
+        course: "Mathematics III",
+        marks: { assignment: 65, test: 70, final: 68 },
+        attendance: 75,
+      },
     ],
   };
 
-  const getAverage = (marks) => Math.round((marks.assignment + marks.test + marks.final) / 3);
+  const getAverage = (m) => Math.round((m.assignment + m.test + m.final) / 3);
+  const avgAttendance = Math.round(
+    student.subjects.reduce((s, x) => s + x.attendance, 0) /
+      student.subjects.length
+  );
+  const avgMarks = Math.round(
+    student.subjects.reduce((s, x) => s + getAverage(x.marks), 0) /
+      student.subjects.length
+  );
 
-  const getOverallStatus = () => {
-    const finalAvg = student.subjects.reduce((sum, s) => sum + s.marks.final, 0) / student.subjects.length;
-    return finalAvg >= 60 ? "Pass" : "At Risk";
-  };
+  const overallStatus = avgMarks >= 60 ? "Pass" : "At Risk";
+  const statusColor = (s) =>
+    s === "Pass"
+      ? "bg-green-100 text-green-700"
+      : "bg-red-100 text-red-700";
 
-  const statusColor = (status) => {
-    if (status === "Pass") return "bg-green-200 text-green-800";
-    if (status === "At Risk") return "bg-yellow-200 text-yellow-800";
-    if (status === "Fail") return "bg-red-200 text-red-800";
-    return "bg-gray-200 text-gray-800";
-  };
+  const barColor = (v) =>
+    v >= 85 ? "bg-green-500" : v >= 60 ? "bg-yellow-400" : "bg-red-500";
 
-  const getBarWidth = (value) => `${Math.min(value, 100)}%`;
+  const getBarWidth = (v) => `${Math.min(v, 100)}%`;
+
+  // Radar chart values (normalised)
+  const radarData = [
+    { label: "Assignments", value: avgMarks },
+    { label: "Tests", value: avgMarks - 5 },
+    { label: "Finals", value: avgMarks - 2 },
+    { label: "Attendance", value: avgAttendance },
+    { label: "Consistency", value: avgMarks - 3 },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">My Performance</h2>
+    <div className="p-6 space-y-8">
 
-      {/* Summary Stats */}
+      {/* Header */}
+      <h2 className="text-3xl font-extrabold text-blue-800">
+        📊 Performance Dashboard <span className="text-sm ml-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full">Beta</span>
+      </h2>
+      <p className="text-gray-600 mt-1">
+        Smart AI-powered academic insights & progress tracking.
+      </p>
+
+      {/* OVERVIEW CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-        <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
+
+        {/* TOTAL SUBJECTS */}
+        <div className="p-6 bg-white rounded-2xl shadow hover:shadow-xl transition border-t-4 border-blue-500">
           <p className="text-gray-500 text-sm">Total Subjects</p>
-          <h3 className="text-3xl font-bold text-blue-700">{student.subjects.length}</h3>
+          <h3 className="text-4xl font-extrabold text-blue-700">
+            {student.subjects.length}
+          </h3>
+          <Award className="mt-3 text-blue-500" />
         </div>
-        <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
+
+        {/* AVG MARKS */}
+        <div className="p-6 bg-white rounded-2xl shadow hover:shadow-xl transition border-t-4 border-green-500">
           <p className="text-gray-500 text-sm">Average Marks</p>
-          <h3 className="text-3xl font-bold text-blue-700">
-            {Math.round(student.subjects.reduce((sum, s) => sum + getAverage(s.marks), 0) / student.subjects.length)}
+          <h3 className="text-4xl font-extrabold text-green-600">
+            {avgMarks}
           </h3>
+          <TrendingUp className="mt-3 text-green-500" />
         </div>
-        <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
-          <p className="text-gray-500 text-sm">Average Attendance</p>
-          <h3 className="text-3xl font-bold text-blue-700">
-            {Math.round(student.subjects.reduce((sum, s) => sum + s.attendance, 0) / student.subjects.length)}%
+
+        {/* ATTENDANCE */}
+        <div className="p-6 bg-white rounded-2xl shadow hover:shadow-xl transition border-t-4 border-orange-500">
+          <p className="text-gray-500 text-sm">Attendance</p>
+          <h3 className="text-4xl font-extrabold text-orange-600">
+            {avgAttendance}%
           </h3>
+          <Activity className="mt-3 text-orange-500" />
         </div>
-        <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
+
+        {/* STATUS */}
+        <div className="p-6 bg-white rounded-2xl shadow hover:shadow-xl transition border-t-4 border-purple-500">
           <p className="text-gray-500 text-sm">Overall Status</p>
-          <h3 className={`text-3xl font-bold px-2 py-1 rounded-full ${statusColor(getOverallStatus())}`}>
-            {getOverallStatus()}
-          </h3>
+          <span
+            className={`mt-2 inline-block px-4 py-1 text-2xl font-bold rounded-full ${statusColor(
+              overallStatus
+            )}`}
+          >
+            {overallStatus}
+          </span>
         </div>
       </div>
 
-      {/* Subject Table */}
-      <div className="bg-white p-4 rounded-xl shadow overflow-x-auto">
+      {/* SKILL RADAR CHART (SVG) */}
+      <div className="bg-white p-6 rounded-2xl shadow border">
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Brain className="text-purple-600" /> Skill Radar Analysis
+        </h3>
+
+        <div className="relative w-64 h-64 mx-auto">
+          <svg width="100%" height="100%" viewBox="0 0 200 200">
+            {/* Radar Axes */}
+            {radarData.map((d, i) => {
+              const angle = (Math.PI * 2 * i) / radarData.length;
+              const x = 100 + 80 * Math.cos(angle);
+              const y = 100 + 80 * Math.sin(angle);
+              return (
+                <line
+                  key={i}
+                  x1="100"
+                  y1="100"
+                  x2={x}
+                  y2={y}
+                  stroke="#d1d5db"
+                />
+              );
+            })}
+
+            {/* Radar Fill */}
+            <polygon
+              fill="rgba(124, 58, 237, 0.2)"
+              stroke="#7c3aed"
+              strokeWidth="2"
+              points={radarData
+                .map((d, i) => {
+                  const angle = (Math.PI * 2 * i) / radarData.length;
+                  const radius = (d.value / 100) * 80;
+                  const x = 100 + radius * Math.cos(angle);
+                  const y = 100 + radius * Math.sin(angle);
+                  return `${x},${y}`;
+                })
+                .join(" ")}
+            />
+          </svg>
+
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-sm text-gray-700">
+            Finals
+          </div>
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-sm text-gray-700">
+            Attendance
+          </div>
+        </div>
+      </div>
+
+      {/* SUBJECT TABLE */}
+      <div className="bg-white p-4 rounded-2xl shadow">
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <BarChart2 className="text-blue-600" /> Subject-wise Breakdown
+        </h3>
+
         <table className="w-full table-auto">
           <thead>
             <tr className="bg-gray-100">
-              <th className="p-2 text-left">Subject</th>
-              <th className="p-2 text-left">Assignment</th>
-              <th className="p-2 text-left">Test</th>
-              <th className="p-2 text-left">Final</th>
-              <th className="p-2 text-left">Average</th>
-              <th className="p-2 text-left">Attendance %</th>
-              <th className="p-2 text-left">Status</th>
-              <th className="p-2 text-left">Actions</th>
+              <th className="p-3 text-left">Subject</th>
+              <th className="p-3">Avg Marks</th>
+              <th className="p-3">Attendance</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {student.subjects.map((s, i) => {
               const avg = getAverage(s.marks);
               const status = avg >= 60 ? "Pass" : "At Risk";
+
               return (
-                <tr key={i} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-2">{s.course}</td>
-                  <td className="p-2">{s.marks.assignment}</td>
-                  <td className="p-2">{s.marks.test}</td>
-                  <td className="p-2">{s.marks.final}</td>
-                  <td className="p-2">{avg}</td>
-                  <td className="p-2">{s.attendance}%</td>
-                  <td className={`p-2 font-semibold ${statusColor(status)} rounded-full text-center`}>{status}</td>
-                  <td className="p-2">
+                <tr
+                  key={i}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  <td className="p-3 font-medium">{s.course}</td>
+                  <td className="p-3">{avg}</td>
+                  <td className="p-3">{s.attendance}%</td>
+                  <td className="p-3">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
+                        status
+                      )}`}
+                    >
+                      {status}
+                    </span>
+                  </td>
+                  <td className="p-3">
                     <button
                       onClick={() => setSelectedSubject(s)}
                       className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
@@ -103,58 +224,60 @@ export default function StudentPerformancePage() {
         </table>
       </div>
 
-      {/* Subject Detail Modal */}
+      {/* SUBJECT DETAIL MODAL */}
       {selectedSubject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg relative">
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-xl relative">
+
             <button
               onClick={() => setSelectedSubject(null)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-gray-600 hover:text-black text-xl"
             >
-              ✕
+              ×
             </button>
-            <h3 className="text-xl font-bold mb-4">{selectedSubject.course} Details</h3>
 
-            {/* Marks Bars */}
-            <div className="mt-4 space-y-3">
-              {Object.entries(selectedSubject.marks).map(([key, value]) => (
-                <div key={key}>
-                  <p className="font-semibold capitalize">{key} Marks: {value}</p>
-                  <div className="w-full bg-gray-200 h-4 rounded-full">
+            <h3 className="text-2xl font-bold">
+              {selectedSubject.course} – Detailed Report
+            </h3>
+
+            <div className="mt-4 space-y-5">
+              {/* Mark Bars */}
+              {Object.entries(selectedSubject.marks).map(([k, v]) => (
+                <div key={k}>
+                  <p className="font-semibold capitalize">
+                    {k} Marks: {v}
+                  </p>
+                  <div className="w-full h-4 bg-gray-200 rounded-full">
                     <div
-                      className={`h-4 rounded-full ${
-                        value >= 85 ? "bg-green-500" : value >= 60 ? "bg-yellow-400" : "bg-red-500"
-                      }`}
-                      style={{ width: getBarWidth(value) }}
+                      className={`h-4 rounded-full transition-all ${barColor(
+                        v
+                      )}`}
+                      style={{ width: getBarWidth(v) }}
                     ></div>
                   </div>
                 </div>
               ))}
-            </div>
 
-            {/* Attendance Bar */}
-            <div className="mt-4">
-              <p className="font-semibold">Attendance: {selectedSubject.attendance}%</p>
-              <div className="w-full bg-gray-200 h-4 rounded-full">
-                <div
-                  className={`h-4 rounded-full ${
-                    selectedSubject.attendance >= 90
-                      ? "bg-green-500"
-                      : selectedSubject.attendance >= 75
-                      ? "bg-yellow-400"
-                      : "bg-red-500"
-                  }`}
-                  style={{ width: getBarWidth(selectedSubject.attendance) }}
-                ></div>
+              {/* Attendance */}
+              <div>
+                <p className="font-semibold">
+                  Attendance: {selectedSubject.attendance}%
+                </p>
+                <div className="w-full h-4 bg-gray-200 rounded-full">
+                  <div
+                    className={`h-4 rounded-full ${barColor(
+                      selectedSubject.attendance
+                    )}`}
+                    style={{
+                      width: getBarWidth(selectedSubject.attendance),
+                    }}
+                  ></div>
+                </div>
               </div>
             </div>
 
-            <p className="mt-2 font-semibold">
-              Status: <span className={`${statusColor(getAverage(selectedSubject.marks) >= 60 ? "Pass" : "At Risk")} px-2 py-1 rounded-full`}>{getAverage(selectedSubject.marks) >= 60 ? "Pass" : "At Risk"}</span>
-            </p>
-
-            <button className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold">
-              Export Report
+            <button className="mt-5 w-full bg-blue-700 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-800">
+              <FileDown size={18} /> Export Report (PDF)
             </button>
           </div>
         </div>

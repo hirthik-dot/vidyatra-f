@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import {
+  Calendar,
+  FileText,
+  Upload,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertOctagon,
+  PlusCircle,
+} from "lucide-react";
 
 export default function StudentLeaveRequestModalPage() {
   const studentId = localStorage.getItem("studentId");
@@ -19,9 +29,7 @@ export default function StudentLeaveRequestModalPage() {
     file: null,
   });
 
-  /* -------------------------------------
-      FETCH STUDENT REQUEST HISTORY
-  ------------------------------------- */
+  // Fetch history
   const fetchRequests = async () => {
     try {
       const res = await axios.get(
@@ -37,9 +45,7 @@ export default function StudentLeaveRequestModalPage() {
     fetchRequests();
   }, []);
 
-  /* -------------------------------------
-      FORM INPUT HANDLER
-  ------------------------------------- */
+  // Handle input
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     setFormData((prev) => ({
@@ -48,16 +54,13 @@ export default function StudentLeaveRequestModalPage() {
     }));
   };
 
-  /* -------------------------------------
-      SUBMIT REQUEST TO BACKEND
-  ------------------------------------- */
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const fd = new FormData();
     fd.append("studentId", studentId);
 
-    // type
     const typeMapped =
       formData.type === "Leave"
         ? "leave"
@@ -67,22 +70,19 @@ export default function StudentLeaveRequestModalPage() {
 
     fd.append("type", typeMapped);
 
-    // leave fields
     if (typeMapped === "leave") {
       fd.append("fromDate", formData.startDate);
       fd.append("toDate", formData.endDate);
     }
 
-    // OD fields
     if (typeMapped === "od") {
       fd.append("date", formData.odDate);
       fd.append("eventName", formData.eventName);
       fd.append("organizer", formData.organizer);
     }
 
-    // common
     fd.append("reason", formData.reason);
-    fd.append("notes", formData.notes || "");
+    fd.append("notes", formData.notes);
 
     if (formData.file) fd.append("attachment", formData.file);
 
@@ -91,7 +91,6 @@ export default function StudentLeaveRequestModalPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Request submitted!");
       setShowModal(false);
       fetchRequests();
     } catch (err) {
@@ -100,42 +99,64 @@ export default function StudentLeaveRequestModalPage() {
     }
   };
 
-  const statusColor = (status) => {
-    if (status === "pending") return "bg-yellow-200 text-yellow-800";
-    if (status === "approved") return "bg-green-200 text-green-800";
-    if (status === "rejected") return "bg-red-200 text-red-800";
-    return "bg-gray-200 text-gray-800";
+  const typeColor = {
+    leave: "bg-blue-100 text-blue-700 border-blue-300",
+    od: "bg-purple-100 text-purple-700 border-purple-300",
+    permission: "bg-teal-100 text-teal-700 border-teal-300",
+  };
+
+  const statusBadge = (status) => {
+    if (status === "pending")
+      return "bg-yellow-100 text-yellow-700 border-yellow-300";
+    if (status === "approved")
+      return "bg-green-100 text-green-700 border-green-300";
+    if (status === "rejected")
+      return "bg-red-100 text-red-700 border-red-300";
+    return "bg-gray-100 text-gray-600 border-gray-300";
+  };
+
+  const statusIcon = (status) => {
+    if (status === "pending")
+      return <Clock className="w-4 h-4 text-yellow-600" />;
+    if (status === "approved")
+      return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+    if (status === "rejected")
+      return <XCircle className="w-4 h-4 text-red-600" />;
   };
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">
-        Leave / OD / Permission Requests
-      </h2>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-extrabold text-blue-700 drop-shadow-sm">
+          Leave / OD / Permission Requests
+        </h2>
 
-      {/* Open Modal Button */}
-      <button
-        onClick={() => setShowModal(true)}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold"
-      >
-        New Request
-      </button>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-semibold shadow"
+        >
+          <PlusCircle size={20} />
+          New Request
+        </button>
+      </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg relative">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg relative animate-scaleIn">
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-gray-600 hover:text-black text-xl"
             >
-              ✕
+              ×
             </button>
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">
-              Submit a Request
+
+            <h3 className="text-2xl font-bold text-gray-800 mb-5">
+              Submit Request
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <select
                 name="type"
                 value={formData.type}
@@ -147,31 +168,37 @@ export default function StudentLeaveRequestModalPage() {
                 <option>Permission</option>
               </select>
 
-              {/* Leave DATE fields */}
               {formData.type === "Leave" && (
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleChange}
-                    className="w-1/2 p-3 border rounded-lg"
-                    required
-                  />
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    className="w-1/2 p-3 border rounded-lg"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Start Date</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      className="w-full p-3 border rounded-lg"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">End Date</label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      className="w-full p-3 border rounded-lg"
+                      required
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* OD fields */}
               {formData.type === "OD" && (
                 <>
+                  <label className="text-sm font-medium">OD Date</label>
                   <input
                     type="date"
                     name="odDate"
@@ -184,9 +211,9 @@ export default function StudentLeaveRequestModalPage() {
                   <input
                     type="text"
                     name="eventName"
+                    placeholder="Event Name"
                     value={formData.eventName}
                     onChange={handleChange}
-                    placeholder="Event Name"
                     className="w-full p-3 border rounded-lg"
                     required
                   />
@@ -194,9 +221,9 @@ export default function StudentLeaveRequestModalPage() {
                   <input
                     type="text"
                     name="organizer"
+                    placeholder="Organizer"
                     value={formData.organizer}
                     onChange={handleChange}
-                    placeholder="Organizer"
                     className="w-full p-3 border rounded-lg"
                     required
                   />
@@ -205,32 +232,32 @@ export default function StudentLeaveRequestModalPage() {
 
               <textarea
                 name="reason"
+                placeholder="Reason / Purpose"
                 value={formData.reason}
                 onChange={handleChange}
-                placeholder="Reason / Purpose"
                 className="w-full p-3 border rounded-lg"
                 required
               />
 
               <textarea
                 name="notes"
+                placeholder="Additional Notes (optional)"
                 value={formData.notes}
                 onChange={handleChange}
-                placeholder="Additional Notes (optional)"
                 className="w-full p-3 border rounded-lg"
               />
 
-              <input
-                type="file"
-                name="file"
-                onChange={handleChange}
-                className="w-full p-2 border rounded-lg"
-              />
+              <div className="flex items-center gap-3">
+                <Upload size={18} className="text-gray-600" />
+                <input
+                  type="file"
+                  name="file"
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
 
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold"
-              >
+              <button className="w-full bg-blue-600 text-white p-3 rounded-xl font-semibold hover:bg-blue-700">
                 Submit Request
               </button>
             </form>
@@ -239,70 +266,85 @@ export default function StudentLeaveRequestModalPage() {
       )}
 
       {/* Request List */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="text-xl font-semibold mb-4 text-gray-800">
-          Your Requests
+      <div className="bg-white p-6 rounded-2xl shadow">
+        <h3 className="text-xl font-bold mb-4 text-gray-800">
+          Request History
         </h3>
 
         {requests.length === 0 ? (
           <p className="text-gray-500">No requests submitted yet.</p>
         ) : (
-          <div className="space-y-3 overflow-x-auto">
-            <table className="w-full table-auto">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2 text-left">Type</th>
-                  <th className="p-2 text-left">Dates</th>
-                  <th className="p-2 text-left">Reason</th>
-                  <th className="p-2 text-left">Status</th>
-                  <th className="p-2 text-left">Attachment</th>
-                </tr>
-              </thead>
+          <div className="space-y-5">
+            {requests.map((req, i) => (
+              <div
+                key={i}
+                className="p-4 border rounded-xl bg-gray-50 hover:bg-gray-100 transition shadow-sm"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm border ${typeColor[
+                      req.type
+                    ]}`}
+                  >
+                    {req.type.toUpperCase()}
+                  </span>
 
-              <tbody>
-                {requests.map((req, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-2">{req.type}</td>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs border flex items-center gap-1 ${statusBadge(
+                      req.status
+                    )}`}
+                  >
+                    {statusIcon(req.status)} {req.status}
+                  </span>
+                </div>
 
-                    <td className="p-2">
-                      {req.type === "leave"
-                        ? `${req.fromDate?.slice(0, 10)} → ${req.toDate?.slice(
-                            0,
-                            10
-                          )}`
-                        : req.type === "od"
-                        ? req.date?.slice(0, 10)
-                        : "-"}
-                    </td>
+                {/* Details */}
+                <div className="mt-3 space-y-2">
+                  <p className="flex items-center gap-2 text-gray-700">
+                    <Calendar size={16} />
+                    {req.type === "leave"
+                      ? `${req.fromDate?.slice(0, 10)} → ${req.toDate?.slice(
+                          0,
+                          10
+                        )}`
+                      : req.type === "od"
+                      ? req.date?.slice(0, 10)
+                      : "Permission Request"}
+                  </p>
 
-                    <td className="p-2">{req.reason}</td>
+                  <p className="text-gray-800 font-medium">
+                    Reason: {req.reason}
+                  </p>
 
-                    <td
-                      className={`p-2 font-semibold rounded-full text-center ${statusColor(
-                        req.status
-                      )}`}
+                  {/* Attachment */}
+                  {req.attachmentUrl && (
+                    <a
+                      href={`http://localhost:5000${req.attachmentUrl}`}
+                      className="text-blue-600 text-sm underline"
+                      target="_blank"
                     >
-                      {req.status}
-                    </td>
+                      View Attachment
+                    </a>
+                  )}
 
-                    <td className="p-2">
-                      {req.attachmentUrl ? (
-                        <a
-                          href={`http://localhost:5000${req.attachmentUrl}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          View
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  {/* 🔥 Rejection Reason Shown BEAUTIFULLY */}
+                  {req.status === "rejected" && req.rejectReason && (
+                    <div className="mt-3 bg-red-50 border-l-4 border-red-500 p-3 rounded-lg flex gap-3">
+                      <AlertOctagon className="text-red-600 w-5 h-5 mt-1" />
+                      <div>
+                        <p className="text-red-700 font-semibold">
+                          Rejected by Faculty
+                        </p>
+                        <p className="text-red-600 text-sm mt-1">
+                          {req.rejectReason}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -1,19 +1,43 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 
+// ICONS
+import { CalendarDays, FileDown, Clock } from "lucide-react";
+
 export default function StudentAssignments() {
   const [assignments, setAssignments] = useState([]);
+  const [facultyMap, setFacultyMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   const studentId = localStorage.getItem("studentId");
 
+  // ------------------------------
+  // Fetch assignments + faculty subjects
+  // ------------------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(
           `http://localhost:5000/api/student/assignments/${studentId}`
         );
-        setAssignments(res.data);
+
+        const assignmentsData = res.data || [];
+        setAssignments(assignmentsData);
+
+        // Fetch faculty details for subject lookup
+        const facultyIds = [
+          ...new Set(assignmentsData.map((a) => a.facultyId)),
+        ];
+
+        const map = {};
+        for (let fId of facultyIds) {
+          if (!fId) continue;
+          const fRes = await axios.get(
+            `http://localhost:5000/api/faculty/profile/${fId}`
+          );
+          map[fId] = fRes.data.subject;
+        }
+        setFacultyMap(map);
       } catch (err) {
         console.error(err);
       } finally {
@@ -24,40 +48,157 @@ export default function StudentAssignments() {
     fetchData();
   }, [studentId]);
 
-  if (loading) return <div className="p-4">Loading assignments...</div>;
+  if (loading)
+    return <div className="p-4 text-lg text-gray-600">Loading assignments...</div>;
+
+  // ------------------------------
+  // Calculate Priority
+  // ------------------------------
+  const getPriority = (dueDate) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const diff = (due - now) / (1000 * 60 * 60 * 24); // days left
+
+    if (diff <= 2) return { level: "High", color: "red" };
+    if (diff <= 6) return { level: "Medium", color: "orange" };
+    return { level: "Low", color: "green" };
+  };
+
+  // ------------------------------
+  // Calculate Meter Percentage
+  // ------------------------------
+  const getProgress = (createdAt, dueDate) => {
+    const start = new Date(createdAt);
+    const end = new Date(dueDate);
+    const now = new Date();
+
+    const total = end - start;
+    const elapsed = now - start;
+
+    let pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+    return pct;
+  };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-3">Assignments</h2>
-      {assignments.length === 0 && <p>No assignments yet.</p>}
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <h2 className="text-3xl font-bold text-blue-700">📘 Assignments</h2>
+      <p className="text-gray-600 -mt-2">
+        Track deadlines, priority, and download assignment instructions easily.
+      </p>
 
-      <div className="space-y-3">
-        {assignments.map((a) => (
-          <div key={a._id} className="border rounded-xl p-3 bg-white">
-            <div className="flex justify-between">
-              <h3 className="font-semibold">{a.title}</h3>
-              <span className="text-sm text-gray-500">
-                Due: {new Date(a.dueDate).toLocaleDateString()}
-              </span>
+      {assignments.length === 0 && (
+        <p className="text-gray-500 text-lg">No assignments available.</p>
+      )}
+
+      {/* Assignment Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {assignments.map((a) => {
+          const priority = getPriority(a.dueDate);
+          const progress = getProgress(a.createdAt, a.dueDate);
+          const subject = facultyMap[a.facultyId] || "General";
+
+          return (
+            <div
+              key={a._id}
+              className="bg-white p-5 rounded-2xl shadow-md border border-gray-200 hover:shadow-xl transition-all"
+            >
+              <div className="flex justify-between">
+                <h3 className="text-xl font-bold text-gray-800">{a.title}</h3>
+                <span
+                  className={`px-3 py-1 text-sm text-white rounded-full bg-${priority.color}-600`}
+                >
+                  {priority.level} Priority
+                </span>
+              </div>
+
+              {/* Subject Tag */}
+              <div className="mt-2 inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                {subject}
+              </div>
+
+              {/* Description */}
+              {a.description && (
+                <p className="mt-3 text-gray-700">{a.description}</p>
+              )}
+
+              {/* Note */}
+              {a.note && (
+                <p className="mt-1 text-gray-500 text-sm">
+                  <b>Note:</b> {a.note}
+                </p>
+              )}
+
+              {/* Due Date */}
+              <div className="flex items-center gap-2 mt-4 text-gray-700">
+                <CalendarDays size={18} />
+                <span className="font-medium">
+                  Due: {new Date(a.dueDate).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* PROGRESS METER */}
+              <div className="mt-4 flex items-center gap-4">
+                <div className="relative w-16 h-16">
+                  <svg className="w-full h-full">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="#e5e7eb"
+                      strokeWidth="6"
+                      fill="none"
+                    />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke={
+                        priority.level === "High"
+                          ? "#dc2626"
+                          : priority.level === "Medium"
+                          ? "#f59e0b"
+                          : "#16a34a"
+                      }
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={2 * Math.PI * 28}
+                      strokeDashoffset={
+                        2 * Math.PI * 28 * (1 - progress / 100)
+                      }
+                      strokeLinecap="round"
+                      className="transition-all duration-700"
+                    />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-700">
+                    {Math.round(progress)}%
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Time Progress</p>
+                  <p className="font-semibold text-gray-800">
+                    {progress < 100
+                      ? "Keep going!"
+                      : "Due date reached"}
+                  </p>
+                </div>
+              </div>
+
+              {/* FILE DOWNLOAD */}
+              {a.fileUrl && (
+                <a
+                  href={`http://localhost:5000${a.fileUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 flex items-center gap-2 text-blue-700 hover:text-blue-900 font-semibold"
+                >
+                  <FileDown size={18} /> Download Attachment
+                </a>
+              )}
             </div>
-            {a.description && (
-              <p className="text-sm text-gray-700 mt-1">{a.description}</p>
-            )}
-            {a.note && (
-              <p className="text-xs text-gray-500 mt-1">Note: {a.note}</p>
-            )}
-            {a.fileUrl && (
-              <a
-                href={`http://localhost:5000${a.fileUrl}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 text-sm mt-2 inline-block"
-              >
-                Download Attachment
-              </a>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
