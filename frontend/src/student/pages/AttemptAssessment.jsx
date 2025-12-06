@@ -21,10 +21,11 @@ export default function AttemptAssessment() {
   useEffect(() => {
     async function fetchAssessment() {
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/student/assessments/view/${id}`,
-          { headers: { Authorization: "Bearer " + token } }
-        );
+       const res = await axios.get(
+  `http://localhost:5000/api/student-assessments/view/${id}`,
+  { headers: { Authorization: "Bearer " + token } }
+);
+
 
         setAssessment(res.data);
 
@@ -84,7 +85,8 @@ export default function AttemptAssessment() {
       );
 
       alert("Assessment submitted successfully!");
-      navigate("/student/assessments");
+      window.location.href = "/student/assessments";
+
 
     } catch (err) {
       console.error("Submit error:", err);

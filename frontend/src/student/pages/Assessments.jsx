@@ -15,10 +15,12 @@ export default function StudentAssessments() {
 
   async function load() {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/student/assessments/${studentId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+     const res = await axios.get(
+  `http://localhost:5000/api/student-assessments/${studentId}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
+
 
       // Sort pending → completed
       const sorted = res.data.sort(
@@ -27,7 +29,7 @@ export default function StudentAssessments() {
 
       setAssessments(sorted);
     } catch (err) {
-      console.error(err);
+      console.error("Student assessments load error:", err);
     } finally {
       setLoading(false);
     }
