@@ -1,6 +1,8 @@
 // src/student/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import FaceRegistrationModal from "../../components/FaceRegistrationModal";
+
 import {
   Activity,
   BarChart2,
@@ -27,6 +29,10 @@ export default function StudentDashboard() {
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [savingInterests, setSavingInterests] = useState(false);
+
+  // Face registration popup
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const token = localStorage.getItem("token");
 
   const navigate = useNavigate();
 
@@ -108,6 +114,14 @@ export default function StudentDashboard() {
           setError(dashData.message || "Failed to load dashboard");
         } else {
           setUser(dashData.user);
+
+          // 🔥 Auto-open Face Registration Modal
+          if (dashData.user && dashData.user.role === "student") {
+            if (!dashData.user.faceRegistered) {
+              setShowRegisterModal(true);
+            }
+          }
+
           setStats(dashData.stats);
 
           if (
@@ -232,6 +246,7 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+
         {/* 2️⃣ ASSIGNMENTS TILE */}
         <div className="bg-white rounded-2xl shadow-sm border p-4">
           <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
@@ -251,7 +266,7 @@ export default function StudentDashboard() {
           </button>
         </div>
 
-        {/* 3️⃣ **NEW ASSESSMENT TILE** */}
+        {/* 3️⃣ NEW ASSESSMENT TILE */}
         <div className="bg-white rounded-2xl shadow-sm border p-4">
           <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
             <CalendarDays className="w-4 h-4 text-orange-600" />
@@ -269,6 +284,7 @@ export default function StudentDashboard() {
             View Assessments
           </button>
         </div>
+
       </div>
 
       {/* MIDDLE SECTION */}
@@ -403,6 +419,7 @@ export default function StudentDashboard() {
             </button>
           </div>
         </div>
+
         {/* Interests */}
         <div className="bg-white rounded-2xl shadow-sm border p-4">
           <div className="flex justify-between items-center mb-2">
@@ -505,6 +522,14 @@ export default function StudentDashboard() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Face Registration Modal */}
+      {showRegisterModal && (
+        <FaceRegistrationModal
+          open={showRegisterModal}
+          onClose={() => setShowRegisterModal(false)}
+        />
       )}
 
     </div>

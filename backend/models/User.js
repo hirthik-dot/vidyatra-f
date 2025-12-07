@@ -28,6 +28,15 @@ const userSchema = new mongoose.Schema(
     className: { type: String, default: null },
     interests: { type: [String], default: [] },
 
+     faceEmbedding: {
+      type: [Number], // 512-length embedding
+      default: null,
+    },
+    faceRegistered: {
+      type: Boolean,
+      default: false,
+    },
+
     // CLASS ADVISOR FOR STUDENTS
     classAdvisorId: {
       type: mongoose.Schema.Types.ObjectId,

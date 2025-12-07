@@ -1,69 +1,139 @@
 import { useEffect, useRef, useState } from "react";
-import { FaceDetection } from "@mediapipe/face_detection";
-import { Camera } from "@mediapipe/camera_utils";
 
 export default function FaceScanModal({ onVerified, onClose }) {
   const videoRef = useRef(null);
-  const [faceDetected, setFaceDetected] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    const faceDetection = new FaceDetection({
-      locateFile: (file) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
-    });
+    let stream;
 
-    faceDetection.setOptions({
-      model: "short",
-      minDetectionConfidence: 0.6,
-    });
+    const startCamera = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-    faceDetection.onResults((results) => {
-      if (results.detections.length > 0) {
-        setFaceDetected(true);
-        setTimeout(() => {
-          onVerified(); // Callback to parent
-          onClose();
-        }, 800);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Camera error:", err);
+        setMessage("Cannot access camera");
       }
-    });
+    };
 
-    if (videoRef.current) {
-      const camera = new Camera(videoRef.current, {
-        onFrame: async () => {
-          await faceDetection.send({ image: videoRef.current });
-        },
-        width: 640,
-        height: 480,
-      });
-      camera.start();
-    }
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    };
   }, []);
 
+  const handleVerify = () => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+
+        setLoading(true);
+        setMessage("");
+
+        try {
+          const formData = new FormData();
+          formData.append("image", blob, "face.jpg");
+
+          const res = await fetch(
+            "http://localhost:5000/api/student/attendance/face-scan",
+            {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + token,
+              },
+              body: formData,
+            }
+          );
+
+          const data = await res.json();
+
+          if (res.ok) {
+            setMessage("Face matched ✅");
+
+            // STEP 1 — Mark face as verified in Attendance page
+            await onVerified();
+
+            // STEP 2 — Give React 150ms to update UI (progress bar)
+            setTimeout(() => {
+              setLoading(false);
+              onClose();
+            }, 150);
+          } else {
+            setMessage(data.message || "Face did not match ❌");
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error(err);
+          setMessage("Error talking to server");
+          setLoading(false);
+        }
+      },
+      "image/jpeg",
+      0.9
+    );
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full text-center">
-        <h2 className="text-xl font-bold mb-3">Scan Your Face</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl border border-gray-200">
 
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className="w-full rounded-xl shadow mb-3"
-        />
+        <h2 className="text-xl font-bold text-blue-700 mb-1">Face Verification</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Align your face in the frame and click <b>Verify</b>.
+        </p>
 
-        {faceDetected ? (
-          <p className="text-green-600 font-semibold">Face Detected ✔</p>
-        ) : (
-          <p className="text-gray-600">Align your face inside the camera.</p>
+        <div className="relative w-full h-64 mb-3 rounded-xl overflow-hidden border">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover bg-black"
+          />
+        </div>
+
+        {message && (
+          <p className="text-sm text-center font-medium text-indigo-600 mb-3">
+            {message}
+          </p>
         )}
 
-        <button
-          onClick={onClose}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg"
-        >
-          Cancel
-        </button>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleVerify}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+          >
+            {loading ? "Verifying..." : "Verify Face"}
+          </button>
+        </div>
       </div>
     </div>
   );

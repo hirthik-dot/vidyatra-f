@@ -6,6 +6,7 @@ import Assessment from "../models/Assessment.js";
 import LeaveRequest from "../models/LeaveRequest.js";
 import BroadcastMessage from "../models/BroadcastMessage.js";
 import ClassTimetable from "../models/ClassTimetable.js"; // ✅ FIXED IMPORT
+import User from "../models/User.js"; // ⭐ IMPORTANT: required to access faceEmbedding
 
 export const getStudentDashboard = async (req, res) => {
   try {
@@ -29,7 +30,7 @@ export const getStudentDashboard = async (req, res) => {
     const startOfDay = new Date(todayStr + "T00:00:00");
     const endOfDay = new Date(todayStr + "T23:59:59");
 
-    // Weekday = "Monday", "Tuesday" etc.
+    // Weekday = "Monday", "Tuesday", etc.
     const dayName = new Date().toLocaleDateString("en-US", {
       weekday: "long",
     });
@@ -120,19 +121,35 @@ export const getStudentDashboard = async (req, res) => {
 
     /*
      * ---------------------------------------------------------
-     * 6️⃣ FINAL RESPONSE
+     * 6️⃣ FACE DATA (IMPORTANT FIX)
+     * ---------------------------------------------------------
+     */
+
+    // Fetch fresh user record to access faceEmbedding
+    const freshUser = await User.findById(user._id);
+
+    const faceRegistered =
+      freshUser.faceEmbedding &&
+      Array.isArray(freshUser.faceEmbedding) &&
+      freshUser.faceEmbedding.length > 0;
+
+    /*
+     * ---------------------------------------------------------
+     * 7️⃣ FINAL RESPONSE (FULL FIX)
      * ---------------------------------------------------------
      */
 
     return res.json({
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        className: user.className,
-        department: user.department,
-        interests: user.interests || [],
+        ...freshUser._doc, // send full user data
+
+        // ⭐ CRITICAL: this enables face popup on frontend
+        faceRegistered: faceRegistered,
+
+        // OPTIONAL: do NOT send embedding for security reasons
+        // faceEmbedding: freshUser.faceEmbedding
       },
+
       stats: {
         attendancePercent,
         assignmentsPending,
@@ -145,6 +162,8 @@ export const getStudentDashboard = async (req, res) => {
 
   } catch (err) {
     console.error("Dashboard error:", err);
-    return res.status(500).json({ message: "Server error loading dashboard" });
+    return res
+      .status(500)
+      .json({ message: "Server error loading dashboard" });
   }
 };

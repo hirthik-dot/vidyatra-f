@@ -8,21 +8,23 @@ export default function Attendance() {
   const [qrVerified, setQrVerified] = useState(false);
 
   const [statusMsg, setStatusMsg] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // for Mark Attendance button
+  const [btLoading, setBtLoading] = useState(false); // ⭐ NEW: Bluetooth scan popup
 
   const [showFaceModal, setShowFaceModal] = useState(false);
+
   const [now, setNow] = useState(new Date());
-  const [graphRange, setGraphRange] = useState("today"); // today | week | month | overall
+  const [graphRange, setGraphRange] = useState("today");
 
   const token = localStorage.getItem("token");
 
-  // Live clock for UI
+  // Live time
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(id);
   }, []);
 
-  // Simple current period label (no random subject)
+  // Current Period
   const getCurrentPeriodLabel = () => {
     const hour = now.getHours();
     if (hour >= 9 && hour < 10) return "Period 1";
@@ -37,35 +39,91 @@ export default function Attendance() {
 
   const currentPeriodLabel = getCurrentPeriodLabel();
 
-  // --- Simulated Wi-Fi Verification ---
-  const verifyWifi = () => {
-    setWifiVerified(true);
-    setStatusMsg("Wi-Fi Verified ✔ (Connected to campus network)");
-  };
-
-  // --- Simulated Bluetooth Verification ---
-  const verifyBluetooth = () => {
-    setBluetoothVerified(true);
-    setStatusMsg("Bluetooth Verified ✔ (Classroom beacon detected)");
-  };
-
-  // --- Face Scan (via modal) ---
-  const verifyFace = () => {
-    setFaceVerified(true);
-    setStatusMsg("Face Detected ✔ (Identity validated)");
-  };
-
-  // --- Simulated QR Scan (route unchanged) ---
-  const scanQR = async () => {
+  // ===========================================
+  // ⭐ REAL WI-FI VERIFICATION (OPPO Hotspot)
+  // ===========================================
+  const verifyWifi = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/student/qr/current");
+      const res = await fetch(
+        "http://10.217.193.59:5000/api/student/attendance/check-wifi",
+        {
+          headers: { Authorization: "Bearer " + token },
+        }
+      );
+
       const data = await res.json();
 
-      const scanned = data.qrCode; // demo: matching QR
+      if (res.ok) {
+        setWifiVerified(true);
+        setStatusMsg("Wi-Fi Verified ✔ Connected to OPPO Hotspot");
+      } else {
+        setWifiVerified(false);
+        setStatusMsg(
+          data.message || "Not connected to OPPO hotspot ❌"
+        );
+      }
+    } catch (err) {
+      setStatusMsg("Wi-Fi verification failed ❌");
+    }
+  };
+
+  // ===========================================
+  // ⭐ REAL BLUETOOTH VERIFICATION (OPPO Reno14 5G)
+  // ===========================================
+  const verifyBluetooth = async () => {
+    try {
+      setBtLoading(true); // ⭐ show loading popup
+      setStatusMsg("Scanning for nearby OPPO Reno14 5G…");
+
+      const res = await fetch(
+        "http://10.217.193.59:5000/api/student/attendance/check-bluetooth",
+        {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setBluetoothVerified(true);
+        setStatusMsg("Bluetooth Verified ✔ OPPO device detected");
+      } else {
+        setBluetoothVerified(false);
+        setStatusMsg(
+          data.message || "Bluetooth not detected ❌ Bring phone closer"
+        );
+      }
+    } catch (err) {
+      console.error("BT error:", err);
+      setStatusMsg("Bluetooth scanning failed ❌");
+    } finally {
+      setBtLoading(false); // ⭐ hide loading popup
+    }
+  };
+
+  // ===========================================
+  // ⭐ Face Scan
+  // ===========================================
+  const verifyFace = () => {
+    setFaceVerified(true);
+    setStatusMsg("Face Detected ✔ (Identity verified)");
+  };
+
+  // ===========================================
+  // ⭐ QR Scan (Backup)
+  // ===========================================
+  const scanQR = async () => {
+    try {
+      const res = await fetch("http://10.217.193.59:5000/api/student/qr/current");
+      const data = await res.json();
+
+      const scanned = data.qrCode;
 
       if (scanned === data.qrCode) {
         setQrVerified(true);
-        setStatusMsg("QR Scan Successful ✔ (Valid Classroom QR)");
+        setStatusMsg("QR Scan Successful ✔");
       } else {
         setStatusMsg("Invalid QR ❌");
       }
@@ -74,32 +132,28 @@ export default function Attendance() {
     }
   };
 
-  // ✅ Your infra rule: (Wi-Fi & Face) OR (BT & Face) OR QR
+  // ===========================================
+  // ⭐ Verification Logic
+  // ===========================================
   const wifiPathOk = wifiVerified && faceVerified;
   const btPathOk = bluetoothVerified && faceVerified;
   const qrPathOk = qrVerified;
 
   const attendanceAllowed = wifiPathOk || btPathOk || qrPathOk;
 
-  // Progress meter for this rule:
-  // Step 1: Presence method (WiFi OR BT OR QR)
-  // Step 2: Face (only required for WiFi or BT path)
-  const presenceMethodDone = wifiVerified || bluetoothVerified || qrVerified;
+  const presenceMethodDone =
+    wifiVerified || bluetoothVerified || qrVerified;
+
   let verificationStepsDone = 0;
   const totalSteps = 2;
 
   if (presenceMethodDone) verificationStepsDone += 1;
 
-  // Face is needed only if using WiFi/BT and not QR
-  const needsFaceForPath =
+  const needsFace =
     (wifiVerified || bluetoothVerified) && !qrVerified;
 
-  if (qrVerified) {
-    // QR alone completes full path
-    verificationStepsDone = 2;
-  } else if (needsFaceForPath && faceVerified) {
-    verificationStepsDone = 2;
-  }
+  if (qrVerified) verificationStepsDone = 2;
+  else if (needsFace && faceVerified) verificationStepsDone = 2;
 
   const verificationPercent = Math.round(
     (verificationStepsDone / totalSteps) * 100
@@ -110,15 +164,19 @@ export default function Attendance() {
     if (wifiPathOk) return "Wi-Fi + Face Path Active";
     if (btPathOk) return "Bluetooth + Face Path Active";
     if (wifiVerified || bluetoothVerified)
-      return "Face verification pending for this path";
-    if (presenceMethodDone) return "Presence verified – select a valid path";
-    return "No verification started yet";
+      return "Face verification pending";
+    if (presenceMethodDone) return "Presence verified";
+    return "Start verification";
   };
 
-  // --- Send Attendance to Backend (route unchanged) ---
+  // ===========================================
+  // ⭐ Mark Attendance
+  // ===========================================
   const markAttendance = async () => {
     if (!attendanceAllowed) {
-      setStatusMsg("Cannot mark attendance. Complete a valid verification path first.");
+      setStatusMsg(
+        "Cannot mark attendance. Complete a valid verification path first."
+      );
       return;
     }
 
@@ -127,7 +185,7 @@ export default function Attendance() {
 
     try {
       const res = await fetch(
-        "http://localhost:5000/api/student/attendance/mark",
+        "http://10.217.193.59:5000/api/student/attendance/mark",
         {
           method: "POST",
           headers: {
@@ -147,7 +205,7 @@ export default function Attendance() {
 
       if (res.ok) {
         if (data.demoMode) {
-          setStatusMsg("Demo Mode: Attendance marked for current period ✔");
+          setStatusMsg("Demo Mode: Attendance marked ✔");
         } else {
           setStatusMsg("Attendance Marked Successfully ✔");
         }
@@ -161,7 +219,9 @@ export default function Attendance() {
     setLoading(false);
   };
 
-  // Fake attendance stats (UI only – can be wired to backend later)
+  // ===========================================
+  // Fake Stats (UI)
+  // ===========================================
   const attendanceStats = {
     today: { attended: 5, total: 6 },
     week: { attended: 26, total: 30 },
@@ -175,7 +235,7 @@ export default function Attendance() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -183,215 +243,200 @@ export default function Attendance() {
             Smart Attendance
           </h2>
           <p className="text-gray-600 mt-1">
-            Multi-layer, tamper-resistant attendance using Wi-Fi, Bluetooth, Face and QR.
+            Multi-layer authentication using Wi-Fi, Bluetooth, and Face.
           </p>
         </div>
 
-        {/* Current Period + Faculty */}
-        <div className="bg-white rounded-2xl shadow-md border border-blue-100 px-4 py-3 flex flex-col md:min-w-[260px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-gray-500">
-              Current Period
-            </span>
-            <span className="text-xs text-gray-400">
-              {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        {/* Period Card */}
+        <div className="bg-white rounded-2xl shadow-md border px-4 py-3">
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Current Period</span>
+            <span>
+              {now.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
-          <div className="mt-1">
-            <p className="font-semibold text-blue-700">
-              {currentPeriodLabel}
-            </p>
-            <p className="text-sm text-gray-600">
-              Class: CSE-A
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Faculty:&nbsp;
-              <span className="font-medium">
-                Dr. Arjun Kumar
-              </span>
-            </p>
-          </div>
+          <p className="font-semibold text-blue-700 mt-1">
+            {currentPeriodLabel}
+          </p>
+          <p className="text-xs text-gray-400">Class: CSE-A</p>
         </div>
       </div>
 
-      {/* STATUS MESSAGE */}
+      {/* STATUS */}
       {statusMsg && (
         <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-800">
           {statusMsg}
         </div>
       )}
 
-      {/* DEMO MODE BANNER */}
-      {statusMsg.includes("Demo Mode") && (
-        <div className="p-3 bg-yellow-100 text-yellow-800 rounded-lg border border-yellow-300 text-sm">
-          ⚠️ <strong>DEMO MODE:</strong> No live class right now.
-          Attendance was marked for the current period for demonstration.
-        </div>
-      )}
-
-      {/* MAIN GRID */}
+      {/* GRID */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* LEFT: VERIFICATION PANEL */}
+        {/* LEFT SIDE */}
         <div className="xl:col-span-2 space-y-4">
-          {/* Verification summary + progress */}
-          <div className="bg-white rounded-2xl shadow-md border p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+          {/* Verification Progress */}
+          <div className="bg-white rounded-2xl shadow p-4 flex flex-col md:flex-row md:justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-700">
-                Verification Path Status
+                Verification Status
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Valid paths:&nbsp;
-                <span className="font-medium text-gray-700">
-                  (Wi-Fi + Face) OR (Bluetooth + Face) OR QR
-                </span>
-              </p>
-              <p className="text-xs text-indigo-600 mt-1">
-                {getPathLabel()}
-              </p>
+              <p className="text-xs text-indigo-600 mt-1">{getPathLabel()}</p>
             </div>
-            <div className="w-full md:w-60">
-              <div className="flex items-center justify-between mb-1 text-xs text-gray-500">
-                <span>{verificationStepsDone} / {totalSteps} steps complete</span>
+
+            {/* Progress Bar */}
+            <div className="w-full md:w-60 mt-3 md:mt-0">
+              <div className="flex justify-between text-xs mb-1">
+                <span>
+                  {verificationStepsDone} / {totalSteps} steps
+                </span>
                 <span>{verificationPercent}%</span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className="h-2 bg-gray-100 rounded-full">
                 <div
-                  className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all"
+                  className="h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all"
                   style={{ width: `${verificationPercent}%` }}
-                />
+                ></div>
               </div>
             </div>
           </div>
 
-          {/* Verification methods */}
+          {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* WIFI */}
-            <div className="p-5 bg-white rounded-2xl shadow-sm border hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-3">
+
+            {/* Wi-Fi */}
+            <div className="p-5 bg-white rounded-2xl shadow border">
+              <div className="flex justify-between mb-2">
                 <div>
                   <h3 className="text-lg font-semibold">Wi-Fi Verification</h3>
                   <p className="text-gray-600 text-sm">
-                    Confirm you are on the secure campus Wi-Fi network.
+                    Must be connected to OPPO Hotspot.
                   </p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${
+                  className={`px-2 py-1 text-xs rounded-full ${
                     wifiVerified
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {wifiVerified ? "Verified" : "Pending"}
                 </span>
               </div>
+
               <button
                 onClick={verifyWifi}
-                className={`w-full px-4 py-2 text-sm font-semibold rounded-lg ${
+                className={`w-full px-4 py-2 rounded-lg text-white font-semibold ${
                   wifiVerified
-                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-green-600"
                     : "bg-blue-600 hover:bg-blue-700"
-                } text-white transition`}
+                }`}
               >
-                {wifiVerified ? "Wi-Fi Verified ✔" : "Verify via Wi-Fi"}
+                {wifiVerified ? "Connected to Hotspot ✔" : "Verify Wi-Fi"}
               </button>
             </div>
 
-            {/* BLUETOOTH */}
-            <div className="p-5 bg-white rounded-2xl shadow-sm border hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-3">
+            {/* Bluetooth */}
+            <div className="p-5 bg-white rounded-2xl shadow border">
+              <div className="flex justify-between mb-2">
                 <div>
-                  <h3 className="text-lg font-semibold">Bluetooth Verification</h3>
+                  <h3 className="text-lg font-semibold">Bluetooth</h3>
                   <p className="text-gray-600 text-sm">
-                    Prove you are physically near the classroom beacon.
+                    Must detect OPPO Reno14 5G nearby.
                   </p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${
+                  className={`px-2 py-1 text-xs rounded-full ${
                     bluetoothVerified
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {bluetoothVerified ? "Verified" : "Pending"}
                 </span>
               </div>
+
               <button
                 onClick={verifyBluetooth}
-                className={`w-full px-4 py-2 text-sm font-semibold rounded-lg ${
+                className={`w-full px-4 py-2 rounded-lg text-white font-semibold ${
                   bluetoothVerified
-                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-green-600"
                     : "bg-blue-600 hover:bg-blue-700"
-                } text-white transition`}
+                }`}
               >
-                {bluetoothVerified ? "Bluetooth Verified ✔" : "Verify via Bluetooth"}
+                {bluetoothVerified ? "Beacon Detected ✔" : "Scan Bluetooth"}
               </button>
             </div>
 
-            {/* FACE SCAN */}
-            <div className="p-5 bg-white rounded-2xl shadow-sm border hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-3">
+            {/* Face Scan */}
+            <div className="p-5 bg-white rounded-2xl shadow border">
+              <div className="flex justify-between mb-2">
                 <div>
                   <h3 className="text-lg font-semibold">Face Scan</h3>
                   <p className="text-gray-600 text-sm">
-                    Use camera-based identity verification mapped to student data.
+                    Confirms your identity.
                   </p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${
+                  className={`px-2 py-1 text-xs rounded-full ${
                     faceVerified
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {faceVerified ? "Verified" : "Pending"}
                 </span>
               </div>
+
               <button
                 onClick={() => setShowFaceModal(true)}
-                className={`w-full px-4 py-2 text-sm font-semibold rounded-lg ${
+                className={`w-full px-4 py-2 rounded-lg text-white font-semibold ${
                   faceVerified
-                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-green-600"
                     : "bg-blue-600 hover:bg-blue-700"
-                } text-white transition`}
+                }`}
               >
                 {faceVerified ? "Face Verified ✔" : "Scan Face"}
               </button>
             </div>
 
-            {/* QR CODE */}
-            <div className="p-5 bg-white rounded-2xl shadow-sm border hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-3">
+            {/* QR Code */}
+            <div className="p-5 bg-white rounded-2xl shadow border">
+              <div className="flex justify-between mb-2">
                 <div>
-                  <h3 className="text-lg font-semibold">QR Scan (Backup)</h3>
+                  <h3 className="text-lg font-semibold">QR Code</h3>
                   <p className="text-gray-600 text-sm">
-                    Scan the session-specific QR displayed in the classroom.
+                    Classroom QR displayed by teacher.
                   </p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${
+                  className={`px-2 py-1 text-xs rounded-full ${
                     qrVerified
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {qrVerified ? "Verified" : "Pending"}
                 </span>
               </div>
+
               <button
                 onClick={scanQR}
-                className={`w-full px-4 py-2 text-sm font-semibold rounded-lg ${
+                className={`w-full px-4 py-2 rounded-lg text-white font-semibold ${
                   qrVerified
-                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-green-600"
                     : "bg-blue-600 hover:bg-blue-700"
-                } text-white transition`}
+                }`}
               >
                 {qrVerified ? "QR Verified ✔" : "Scan QR"}
               </button>
             </div>
           </div>
 
-          {/* MARK ATTENDANCE BUTTON */}
-          <div className="text-center mt-4">
+          {/* Mark Attendance */}
+          <div className="text-center mt-3">
             <button
               onClick={markAttendance}
               disabled={!attendanceAllowed || loading}
@@ -399,27 +444,22 @@ export default function Attendance() {
                 attendanceAllowed
                   ? "bg-blue-700 hover:bg-blue-800"
                   : "bg-gray-400 cursor-not-allowed"
-              } transition`}
+              }`}
             >
-              {loading ? "Marking..." : "Mark Attendance for Current Period"}
+              {loading ? "Marking..." : "Mark Attendance"}
             </button>
-            {!attendanceAllowed && (
-              <p className="mt-1 text-xs text-gray-500">
-                Complete a valid verification path to enable this button.
-              </p>
-            )}
           </div>
         </div>
 
-        {/* RIGHT: ATTENDANCE INSIGHTS / GRAPH */}
-        <div className="bg-white rounded-2xl shadow-md border p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+        {/* RIGHT SIDE: ATTENDANCE ANALYTICS */}
+        <div className="bg-white rounded-2xl shadow-md border p-5">
+          <div className="flex justify-between items-center">
             <div>
               <p className="text-sm font-semibold text-gray-700">
                 Attendance Insights
               </p>
               <p className="text-xs text-gray-500">
-                Visual snapshot of your consistency across periods.
+                Your consistency trend overview.
               </p>
             </div>
             <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
@@ -427,13 +467,13 @@ export default function Attendance() {
             </span>
           </div>
 
-          {/* RANGE TABS */}
-          <div className="flex gap-2 mt-1">
+          {/* Range Tabs */}
+          <div className="flex gap-2 mt-3">
             {[
               { key: "today", label: "Today" },
               { key: "week", label: "Last 7 Days" },
               { key: "month", label: "Last 30 Days" },
-              { key: "overall", label: "All Time" },
+              { key: "overall", label: "Overall" },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -441,7 +481,7 @@ export default function Attendance() {
                 className={`px-3 py-1 rounded-full text-xs font-medium border ${
                   graphRange === tab.key
                     ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                    : "bg-gray-100 text-gray-600 border-gray-300"
                 }`}
               >
                 {tab.label}
@@ -449,64 +489,50 @@ export default function Attendance() {
             ))}
           </div>
 
-          {/* BIG PERCENT + STATS */}
-          <div className="mt-3 flex items-center justify-between gap-3">
+          {/* Percent + Bar */}
+          <div className="mt-5 flex items-center gap-3">
             <div>
               <p className="text-4xl font-bold text-blue-700">
                 {currentPercent}%
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {currentStats.attended} / {currentStats.total} periods attended
+                {currentStats.attended} / {currentStats.total} periods
               </p>
             </div>
+
             <div className="flex-1">
-              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-3 rounded-full bg-gradient-to-r from-emerald-400 via-blue-500 to-indigo-600 transition-all"
+                  className="h-3 bg-gradient-to-r from-green-400 via-blue-500 to-indigo-600 rounded-full"
                   style={{ width: `${currentPercent}%` }}
                 />
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">
-                Higher percentage indicates better consistency for the selected range.
-              </p>
-            </div>
-          </div>
-
-          {/* MINI DAY-WISE BARS (demo data) */}
-          <div className="mt-2">
-            <p className="text-xs font-semibold text-gray-600 mb-1">
-              Day-wise trend (sample)
-            </p>
-            <div className="flex items-end gap-1 h-24">
-              {["M", "T", "W", "T", "F", "S", "S"].map((day, idx) => {
-                const heights = [90, 70, 80, 60, 95, 50, 40]; // demo heights
-                return (
-                  <div
-                    key={day + idx}
-                    className="flex flex-col items-center justify-end flex-1"
-                  >
-                    <div
-                      className="w-3 rounded-t-lg bg-blue-500/80"
-                      style={{ height: `${heights[idx]}%` }}
-                    />
-                    <span className="mt-1 text-[10px] text-gray-500">{day}</span>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
       </div>
 
-      {/* FACE SCAN MODAL */}
+      {/* FACE MODAL */}
       {showFaceModal && (
         <FaceScanModal
-          onVerified={() => {
-            verifyFace();
-            setShowFaceModal(false);
-          }}
+          onVerified={verifyFace}
           onClose={() => setShowFaceModal(false)}
         />
+      )}
+
+      {/* ⭐ BLUETOOTH LOADING POPUP */}
+      {btLoading && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl px-6 py-5 max-w-sm w-full flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            <p className="text-sm font-semibold text-gray-800">
+              Scanning for OPPO Reno14 5G…
+            </p>
+            <p className="text-xs text-gray-500 text-center">
+              Make sure your phone&apos;s Bluetooth is ON and near the laptop.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

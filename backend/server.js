@@ -28,6 +28,8 @@ import facultyAssessmentRoutes from "./routes/facultyAssessmentRoutes.js";
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", true);
+
 
 connectDB();
 
