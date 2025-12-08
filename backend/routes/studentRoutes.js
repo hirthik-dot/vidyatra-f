@@ -14,8 +14,12 @@ import { getCurrentQR } from "../controllers/QrController.js";
 import { getLiveQR } from "../controllers/AttendanceController.js";
 import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
 import { checkWifiAuth } from "../controllers/WifiController.js";
-import { checkBluetoothAuth } from "../controllers/BluetoothController.js";
+import { protect } from "../middleware/AuthMiddleware.js";
 
+
+// 🔥 REPLACED BLUETOOTH CONTROLLER
+// import { checkBluetoothAuth } from "../controllers/BluetoothController.js";
+import { checkGeoAuth } from "../controllers/GeoController.js";
 
 import User from "../models/User.js";
 
@@ -78,7 +82,7 @@ router.get("/qr/current", getCurrentQR);
 router.get("/qr/live", getLiveQR);
 
 /* ======================================================
-   REAL WI-FI VERIFICATION (OPPO Hotspot)
+   REAL WI-FI VERIFICATION
 ====================================================== */
 router.get(
   "/attendance/check-wifi",
@@ -87,16 +91,18 @@ router.get(
   checkWifiAuth
 );
 
-router.get(
-  "/attendance/check-bluetooth",
+/* ======================================================
+   ⭐ NEW — GEOLOCATION VERIFICATION (Replaces Bluetooth)
+====================================================== */
+router.post(
+  "/attendance/check-geo",
   authMiddleware,
   requireRole("student"),
-  checkBluetoothAuth
+  checkGeoAuth
 );
 
-
 /* ======================================================
-   GET STUDENT LIST (for chat/communication)
+   GET STUDENT LIST
 ====================================================== */
 router.get("/", async (req, res) => {
   try {
@@ -156,7 +162,6 @@ router.post(
         contentType: "image/jpeg",
       });
 
-      // Call Python model
       const pyRes = await axios.post("http://localhost:6000/register", form, {
         headers: form.getHeaders(),
       });
@@ -167,7 +172,6 @@ router.post(
         });
       }
 
-      // Save embedding
       await User.findByIdAndUpdate(req.user._id, {
         faceEmbedding: pyRes.data.embedding,
         faceRegistered: true,
@@ -208,7 +212,6 @@ router.post(
         return res.status(400).json({ message: "No image uploaded" });
       }
 
-      // Build form for Python
       const form = new FormData();
       form.append("image", req.file.buffer, {
         filename: "face.jpg",
@@ -226,10 +229,9 @@ router.post(
           .json({ message: "Face did not match. Try again." });
       }
 
-      // Auto-fill verification flags & mark attendance
       req.body = {
         wifiVerified: true,
-        bluetoothVerified: false,
+        geoVerified: false,      // 🔥 set this if you want auto mark with geo
         faceVerified: true,
         qrVerified: false,
       };
@@ -246,5 +248,34 @@ router.post(
     }
   }
 );
+
+router.get("/current-free-period", protect, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+
+    // Use your existing timetable logic:
+    const timetable = await StudentTimetable.findOne({ studentId });
+
+    if (!timetable) {
+      return res.json({ isFree: false });
+    }
+
+    const today = now.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    const periods = timetable[today] || [];
+
+    const freeNow = periods.find(
+      (p) => p.start <= currentTime && p.end >= currentTime && p.isFree === true
+    );
+
+    return res.json({ isFree: !!freeNow });
+  } catch (err) {
+    console.error("FREE PERIOD CHECK ERROR:", err);
+    res.status(500).json({ isFree: false });
+  }
+});
+
 
 export default router;

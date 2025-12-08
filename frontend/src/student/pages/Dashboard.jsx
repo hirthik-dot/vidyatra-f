@@ -348,6 +348,30 @@ export default function StudentDashboard() {
           )}
         </div>
 
+        {/* ⭐ GAME XP PROGRESS TILE */}
+        <div className="bg-white rounded-2xl shadow-sm border p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="text-lg font-semibold text-purple-700 flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500" />
+                Gamified Learning Progress
+              </h3>
+              <p className="text-xs text-gray-500">
+                Earn XP by playing mini games during free periods.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate("/student/ai")}
+              className="text-xs px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition"
+            >
+              Play Now
+            </button>
+          </div>
+
+          <XPProgress />
+        </div>
+
         {/* Announcements */}
         <div className="bg-white rounded-2xl shadow-sm border p-5">
           <h3 className="text-lg font-semibold text-blue-700 flex items-center gap-2">
@@ -532,6 +556,87 @@ export default function StudentDashboard() {
         />
       )}
 
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------
+   ⭐ XP PROGRESS COMPONENT (ADDED BY GPT, DO NOT REMOVE)
+----------------------------------------------------------- */
+
+function XPProgress() {
+  const [xp, setXp] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const rewardLadder = [
+    { xp: 100, label: "Bronze Badge" },
+    { xp: 200, label: "Silver Badge" },
+    { xp: 300, label: "Gold Badge" },
+    { xp: 500, label: "Internship Opportunity" },
+  ];
+
+  const getRewardProgress = () => {
+    const next = rewardLadder.find((r) => xp < r.xp);
+    if (!next) {
+      return {
+        text: "🎉 All rewards unlocked including Internship!",
+        percent: 100,
+        nextLabel: "All Rewards Unlocked",
+      };
+    }
+    return {
+      percent: Math.min(100, (xp / next.xp) * 100),
+      text: `You need ${next.xp - xp} XP more to unlock ${next.label}`,
+      nextLabel: next.label,
+    };
+  };
+
+  const reward = getRewardProgress();
+
+  useEffect(() => {
+    const fetchXP = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:5000/api/student/xp", {
+          headers: { Authorization: "Bearer " + token },
+        });
+        const data = await res.json();
+        setXp(data.totalXP || 0);
+      } catch (e) {
+        console.error("XP Load Error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchXP();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mt-3 flex items-center gap-3 text-gray-500">
+        <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent animate-spin rounded-full"></div>
+        Loading XP…
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      {/* Total XP */}
+      <p className="text-2xl font-bold text-purple-700">{xp} XP</p>
+      <p className="text-[11px] text-gray-500 mb-3">
+        Total XP earned through AI mini-games.
+      </p>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-purple-200 h-3 rounded-full overflow-hidden mb-1">
+        <div
+          className="h-full bg-purple-600 transition-all duration-500"
+          style={{ width: `${reward.percent}%` }}
+        ></div>
+      </div>
+
+      <p className="text-[11px] text-purple-700">{reward.text}</p>
     </div>
   );
 }

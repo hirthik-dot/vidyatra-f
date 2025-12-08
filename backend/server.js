@@ -25,6 +25,10 @@ import adminFacultyRoutes from "./routes/adminFacultyRoutes.js";
 import studentAssessmentRoutes from "./routes/studentAssessmentRoutes.js";
 import studentAssessmentSubmitRoutes from "./routes/studentAssessmentSubmitRoutes.js";
 import facultyAssessmentRoutes from "./routes/facultyAssessmentRoutes.js";
+import xpRoutes from "./routes/xpRoutes.js";
+import gameRoutes from "./routes/gameRoutes.js";
+
+
 
 dotenv.config();
 const app = express();
@@ -76,6 +80,10 @@ app.use("/api/admin", adminFacultyRoutes);
 app.use("/api/communication", communicationRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/resume", resumeRouter);
+app.use("/api/student", xpRoutes); // ⭐ ADD THIS LINE
+app.use("/api/games", gameRoutes);
+
+
 
 // Default root route
 app.get("/", (req, res) => {

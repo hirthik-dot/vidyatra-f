@@ -33,21 +33,22 @@ function getTodayRange() {
 
 export const markStudentAttendance = async (req, res) => {
   try {
-    const { wifiVerified, bluetoothVerified, faceVerified, qrVerified } =
+    // 🔥 ADDED: geoVerified beside existing Bluetooth variable
+    const { wifiVerified, bluetoothVerified, geoVerified, faceVerified, qrVerified } =
       req.body;
 
     // -------------------------------------------
-    // 1️⃣ VERIFY AUTH PATH
+    // 1️⃣ VERIFY AUTH PATH (Modified for Geo instead of Bluetooth)
     // -------------------------------------------
     const ok =
       (wifiVerified && faceVerified) ||
-      (bluetoothVerified && faceVerified) ||
+      (geoVerified && faceVerified) ||     // 🔥 NEW
       qrVerified;
 
     if (!ok) {
       return res.status(400).json({
         message:
-          "Verification failed. Use Wi-Fi+Face, Bluetooth+Face, or valid QR.",
+          "Verification failed. Use Wi-Fi+Face, Location+Face, or valid QR.",
       });
     }
 
@@ -70,7 +71,6 @@ export const markStudentAttendance = async (req, res) => {
     });
 
     if (!timetable) {
-      // ⭐ Fallback: allow demo attendance even if no timetable exists
       return res.json({
         message: "Demo Mode: Attendance marked (no timetable found).",
         demoMode: true,
@@ -78,7 +78,7 @@ export const markStudentAttendance = async (req, res) => {
     }
 
     // -------------------------------------------
-    // 3️⃣ DETECT CURRENT PERIOD OR FALLBACK TO DEMO MODE
+    // 3️⃣ DETECT CURRENT PERIOD
     // -------------------------------------------
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -90,16 +90,14 @@ export const markStudentAttendance = async (req, res) => {
       const startMins = timeStringToMinutes(p.start);
       const endMins = timeStringToMinutes(p.end);
 
-      // Check if current time is inside the class period
       if (nowMinutes >= startMins && nowMinutes <= endMins) {
         currentPeriod = p;
         break;
       }
     }
 
-    // ⭐ ALWAYS allow demo mode when time doesn't match any period
     if (!currentPeriod) {
-      currentPeriod = timetable.periods[0]; // fallback to period 1
+      currentPeriod = timetable.periods[0];
       demoMode = true;
     }
 
@@ -121,7 +119,7 @@ export const markStudentAttendance = async (req, res) => {
     }
 
     // -------------------------------------------
-    // 5️⃣ SAVE ATTENDANCE
+    // 5️⃣ SAVE ATTENDANCE  (Modified: Added location)
     // -------------------------------------------
     const attendance = await Attendance.create({
       student: user._id,
@@ -132,7 +130,8 @@ export const markStudentAttendance = async (req, res) => {
       subject: currentPeriod.subject,
       methods: {
         wifi: !!wifiVerified,
-        bluetooth: !!bluetoothVerified,
+        bluetooth: false,        // 🔥 force false (kept for schema compatibility)
+        location: !!geoVerified, // 🔥 NEW FIELD
         face: !!faceVerified,
         qr: !!qrVerified,
       },

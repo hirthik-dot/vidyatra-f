@@ -17,7 +17,13 @@ const attendanceSchema = new mongoose.Schema(
 
     methods: {
       wifi: { type: Boolean, default: false },
+
+      // 🔥 KEEP BLUETOOTH (for old records)
       bluetooth: { type: Boolean, default: false },
+
+      // 🔥 NEW FIELD FOR GEOLOCATION
+      location: { type: Boolean, default: false },
+
       face: { type: Boolean, default: false },
       qr: { type: Boolean, default: false },
     },

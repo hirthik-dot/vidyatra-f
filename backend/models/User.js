@@ -28,7 +28,17 @@ const userSchema = new mongoose.Schema(
     className: { type: String, default: null },
     interests: { type: [String], default: [] },
 
-     faceEmbedding: {
+    // ⭐ ADD XP SYSTEM HERE
+    totalXP: {
+      type: Number,
+      default: 0,
+    },
+    completedGames: {
+      type: [String],
+      default: [],
+    },
+
+    faceEmbedding: {
       type: [Number], // 512-length embedding
       default: null,
     },

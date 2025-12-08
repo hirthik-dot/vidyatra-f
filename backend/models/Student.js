@@ -40,6 +40,17 @@ const studentSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+
+    /* ⭐⭐⭐ ADDED XP SYSTEM FIELDS ⭐⭐⭐ */
+    totalXP: {
+      type: Number,
+      default: 0,
+    },
+
+    completedGames: {
+      type: [String], // ["sdlc", "bug", "usecase"]
+      default: [],
+    },
   },
   { timestamps: true }
 );
