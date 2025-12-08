@@ -1,4 +1,5 @@
 // src/student/pages/Dashboard.jsx
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FaceRegistrationModal from "../../components/FaceRegistrationModal";
@@ -19,6 +20,26 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  ResponsiveContainer,
+  BarChart as RBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  LineChart as RLineChart,
+  Line,
+  PieChart as RPieChart,
+  Pie,
+  Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+} from "recharts";
+
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -30,11 +51,11 @@ export default function StudentDashboard() {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [savingInterests, setSavingInterests] = useState(false);
 
-  // Face registration popup
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const token = localStorage.getItem("token");
-
   const navigate = useNavigate();
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const ALL_INTERESTS = [
     "Web Development",
@@ -49,6 +70,7 @@ export default function StudentDashboard() {
     "Competitive Programming",
   ];
 
+  // ───────────────────── SAVE INTERESTS ─────────────────────
   const saveInterests = async () => {
     if (selectedInterests.length === 0) {
       alert("Please select at least one interest");
@@ -57,8 +79,6 @@ export default function StudentDashboard() {
 
     try {
       setSavingInterests(true);
-      const token = localStorage.getItem("token");
-
       const res = await fetch(
         "http://localhost:5000/api/student/save-interests",
         {
@@ -71,7 +91,6 @@ export default function StudentDashboard() {
         }
       );
 
-      const data = await res.json();
       if (!res.ok) {
         alert("Failed to save interests");
         return;
@@ -82,14 +101,15 @@ export default function StudentDashboard() {
       );
       setShowInterestForm(false);
     } catch (err) {
+      console.error(err);
       alert("Something went wrong while saving interests");
     } finally {
       setSavingInterests(false);
     }
   };
 
+  // ───────────────────── LOAD DATA ─────────────────────
   useEffect(() => {
-    const token = localStorage.getItem("token");
     if (!token) {
       setError("You are not logged in.");
       setLoading(false);
@@ -114,23 +134,21 @@ export default function StudentDashboard() {
           setError(dashData.message || "Failed to load dashboard");
         } else {
           setUser(dashData.user);
-
-          // 🔥 Auto-open Face Registration Modal
-          if (dashData.user && dashData.user.role === "student") {
-            if (!dashData.user.faceRegistered) {
-              setShowRegisterModal(true);
-            }
-          }
-
           setStats(dashData.stats);
 
+          // Face registration popup
           if (
-            dashData.user &&
-            (!dashData.user.interests || dashData.user.interests.length === 0)
+            dashData.user?.role === "student" &&
+            !dashData.user.faceRegistered
           ) {
+            setShowRegisterModal(true);
+          }
+
+          // Interests
+          if (!dashData.user?.interests?.length) {
             setShowInterestForm(true);
           } else {
-            setSelectedInterests(dashData.user?.interests || []);
+            setSelectedInterests(dashData.user.interests);
           }
         }
 
@@ -140,14 +158,17 @@ export default function StudentDashboard() {
 
         setLoading(false);
       } catch (err) {
+        console.error(err);
         setError("Something went wrong loading dashboard");
         setLoading(false);
       }
     }
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ───────────────────── DERIVED METRICS & FALLBACKS ─────────────────────
   const attendance = stats?.attendancePercent ?? 0;
   const assignmentsPending = stats?.assignmentsPending ?? 0;
   const assessmentCount = stats?.assessmentCount ?? 0;
@@ -155,22 +176,122 @@ export default function StudentDashboard() {
   const attendanceStatus =
     attendance >= 90 ? "Excellent" : attendance >= 75 ? "Safe" : "At Risk";
 
-  const attendanceColor =
-    attendance >= 90
-      ? "text-green-600"
-      : attendance >= 75
-      ? "text-amber-500"
-      : "text-red-500";
+  const subjectsRaw = stats?.subjects || [];
+  const subjects =
+    subjectsRaw.length > 0
+      ? subjectsRaw
+      : [
+          {
+            subject: "DSA",
+            mark: 82,
+            highest: 96,
+            lowest: 38,
+            avg: 78,
+            cia: 77,
+          },
+          {
+            subject: "OS",
+            mark: 76,
+            highest: 91,
+            lowest: 42,
+            avg: 74,
+            cia: 72,
+          },
+          {
+            subject: "DBMS",
+            mark: 79,
+            highest: 94,
+            lowest: 40,
+            avg: 76,
+            cia: 75,
+          },
+          {
+            subject: "CN",
+            mark: 74,
+            highest: 89,
+            lowest: 36,
+            avg: 71,
+            cia: 70,
+          },
+          {
+            subject: "Maths",
+            mark: 88,
+            highest: 99,
+            lowest: 45,
+            avg: 83,
+            cia: 84,
+          },
+        ];
 
+  const avgMark =
+    stats?.avgMark ??
+    (subjects.length
+      ? subjects.reduce((sum, s) => sum + (s.mark || 0), 0) / subjects.length
+      : 0);
+
+  const avgCgpa = stats?.avgCgpa ?? user?.cgpa ?? 8.1; // fallback demo
+
+  const attendanceSafe = Math.min(Math.max(Number(attendance) || 0, 0), 100);
+
+  // Grouped marks data: highest / lowest / avg / your mark
+  const marksBreakdownData = subjects.map((s) => {
+    const your = s.mark ?? 0;
+    const average = s.avg ?? s.average ?? Math.max(0, your - 5);
+    const highest = s.highest ?? Math.min(100, your + 10);
+    const lowest = s.lowest ?? Math.max(30, your - 20);
+    return {
+      subjectName: s.subject,
+      highest,
+      lowest,
+      average,
+      yourMark: your,
+    };
+  });
+
+  // Trend data (CIA or derived)
+  const ciaTrendData = subjects.map((s, i) => ({
+    subjectName: s.subject,
+    score: s.cia ?? (s.mark ?? 0) - i * 1.4,
+  }));
+
+  // Radar data
+  const radarData = subjects.map((s) => ({
+    subjectName: s.subject,
+    strength: Math.round(((s.mark ?? 0) / 100) * 10), // 0–10 scale
+  }));
+
+  // Performance categories
+  const categoryCounts = subjects.reduce(
+    (acc, s) => {
+      const m = s.mark ?? 0;
+      if (m >= 85) acc.high += 1;
+      else if (m >= 70) acc.medium += 1;
+      else acc.low += 1;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
+
+  const performancePieData = [
+    { name: "Strong (≥85)", value: categoryCounts.high || 1 },
+    { name: "Stable (70–84)", value: categoryCounts.medium || 1 },
+    { name: "Needs Focus (<70)", value: categoryCounts.low || 1 },
+  ];
+
+  const PIE_COLORS = ["#22c55e", "#3b82f6", "#f97316"];
+
+  // ───────────────────── LOADING & ERROR STATES ─────────────────────
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl px-8 py-6 flex items-center gap-4">
+      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50">
+        <div className="bg-white rounded-2xl shadow-xl px-8 py-6 flex items-center gap-4 border border-slate-200">
           <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           <div>
-            <p className="font-semibold text-gray-800">Loading your dashboard…</p>
+            <p className="font-semibold text-gray-800">
+              Loading your dashboard…
+            </p>
             <p className="text-xs text-gray-500">
-              Fetching attendance, assignments and smart suggestions.
+              Fetching attendance, marks, XP and smart suggestions.
             </p>
           </div>
         </div>
@@ -180,8 +301,8 @@ export default function StudentDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center">
+      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center border border-red-100">
           <p className="font-semibold text-red-600 mb-1">
             Unable to load dashboard
           </p>
@@ -197,260 +318,358 @@ export default function StudentDashboard() {
     );
   }
 
+  // ───────────────────── MAIN UI ─────────────────────
   return (
-    <div className="space-y-6">
-
-      {/* HEADER */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
-        <h2 className="text-4xl font-extrabold">
-          Welcome back, {user?.name || "Student"} 👋
-        </h2>
-        <p className="text-sm text-blue-100 mt-1">
-          Dashboard summary of your classes, tasks & personalized suggestions.
-        </p>
-      </div>
-
-      {/* TOP CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-
-        {/* 1️⃣ ATTENDANCE RING TILE */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-            <Activity className="w-4 h-4 text-blue-500" />
-            Attendance
-          </p>
-
-          <div className="flex justify-between mt-2 items-center">
-            <div>
-              <p className="text-3xl font-bold">{attendance}%</p>
-              <p className="text-xs text-gray-500">{attendanceStatus}</p>
-            </div>
-
-            {/* Ring */}
-            <div className="relative w-16 h-16">
-              <svg className="w-full h-full" viewBox="0 0 36 36">
-                <path
-                  d="M18 2 A 16 16 0 1 1 17.99 2"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="4"
-                />
-                <path
-                  d="M18 2 A 16 16 0 1 1 17.99 2"
-                  fill="none"
-                  stroke={attendance >= 75 ? "#16A34A" : "#DC2626"}
-                  strokeWidth="4"
-                  strokeDasharray={`${attendance}, 100`}
-                />
-              </svg>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 text-slate-900">
+      <div className="max-w-7xl mx-auto px-4 py-6 lg:py-7 space-y-4">
+        {/* HEADER */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              Welcome back,{" "}
+              <span className="text-slate-900">
+                {user?.name || "Student"}
+              </span>
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">
+              Your academic snapshot – attendance, marks, XP and AI-powered
+              suggestions in one place.
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {user?.department || user?.deptName || "CSE"} &middot{" "}
+              {user?.className || user?.classSection || "CSE A"}{" "}
+              {user?.registerNo && <> &middot; Reg: {user.registerNo}</>}
+            </p>
           </div>
-        </div>
-
-        {/* 2️⃣ ASSIGNMENTS TILE */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-            <ListTodo className="w-4 h-4 text-violet-600" />
-            Assignments Pending
-          </p>
-
-          <p className="text-3xl font-bold text-violet-700">
-            {assignmentsPending}
-          </p>
-
-          <button
-            onClick={() => navigate("/student/assignments")}
-            className="text-xs text-violet-700 underline"
-          >
-            View Assignments
-          </button>
-        </div>
-
-        {/* 3️⃣ NEW ASSESSMENT TILE */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-            <CalendarDays className="w-4 h-4 text-orange-600" />
-            Assessments
-          </p>
-
-          <p className="text-3xl font-bold text-orange-600">
-            {assessmentCount}
-          </p>
-
-          <button
-            onClick={() => navigate("/student/assessments")}
-            className="text-xs text-orange-700 underline"
-          >
-            View Assessments
-          </button>
-        </div>
-
-      </div>
-
-      {/* MIDDLE SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* AI Suggestions */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-700 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-500" />
-                Smart Suggestions for You
-              </h3>
-              <p className="text-xs text-gray-500">
-                Based on timetable, free periods & tasks.
-              </p>
-            </div>
-
+          <div className="flex gap-2 items-center">
             <button
               onClick={() => navigate("/student/ai")}
-              className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold"
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
             >
-              <Brain className="w-3 h-3" />
-              Open AI Assistant
+              <Brain className="w-3.5 h-3.5 text-sky-500" />
+              Open AI Mentor
             </button>
           </div>
+        </div>
 
+        {/* QUICK NAV + ANNOUNCEMENTS (RIGHT BELOW HEADER) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Quick Navigation – spans 2 cols on large */}
+          <div className="lg:col-span-2">
+            <Card title="Quick Navigation">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <QuickNavButton
+                  icon={CalendarDays}
+                  label="Timetable"
+                  color="indigo"
+                  onClick={() => navigate("/student/schedule")}
+                />
+                <QuickNavButton
+                  icon={ListTodo}
+                  label="Assignments"
+                  color="violet"
+                  onClick={() => navigate("/student/assignments")}
+                />
+                <QuickNavButton
+                  icon={BarChart2}
+                  label="Attendance"
+                  color="emerald"
+                  onClick={() => navigate("/student/attendance")}
+                />
+                <QuickNavButton
+                  icon={Clock}
+                  label="Leave / OD"
+                  color="amber"
+                  onClick={() => navigate("/student/leave")}
+                />
+              </div>
+            </Card>
+          </div>
+
+          {/* Announcements */}
+          <div>
+            <Card title="Important Announcements">
+              {!stats?.announcements?.length ? (
+                <p className="text-xs text-gray-500">
+                  No new announcements from faculty/admin.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto mt-1 pr-1">
+                  {stats.announcements.map((a, i) => (
+                    <div
+                      key={i}
+                      className="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-[11px] flex gap-2"
+                    >
+                      <Bell className="w-3.5 h-3.5 text-rose-500 mt-0.5" />
+                      <p className="text-slate-800 leading-snug">• {a}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+
+        {/* TOP STATS – Attendance / Avg Mark / Avg CGPA */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard
+            icon={Activity}
+            label="Attendance"
+            value={`${attendanceSafe.toFixed(1)}%`}
+            chip={attendanceStatus}
+          />
+          <StatCard
+            icon={BookOpen}
+            label="Average Marks"
+            value={avgMark.toFixed(2)}
+            chip="Across all subjects"
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label="Average CGPA"
+            value={Number(avgCgpa || 0).toFixed(2)}
+            chip="Overall performance"
+          />
+        </div>
+
+        {/* MAIN ANALYTICS ROW – Grouped Bar / Trend / Radar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* MARKS BREAKDOWN – H/L/AVG/YOUR */}
+          <Card title="Marks Breakdown by Subject">
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RBarChart data={marksBreakdownData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                  <XAxis dataKey="subjectName" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0f172a",
+                      border: "1px solid #1e293b",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "#e5e7eb" }}
+                    itemStyle={{ color: "#e5e7eb" }}
+                  />
+                  <Bar
+                    dataKey="highest"
+                    stackId={null}
+                    fill="#22c55e"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="average"
+                    stackId={null}
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="lowest"
+                    stackId={null}
+                    fill="#f97316"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="yourMark"
+                    stackId={null}
+                    fill="#a855f7"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
+                </RBarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-slate-500">
+              <LegendDot color="#22c55e" label="Highest" />
+              <LegendDot color="#3b82f6" label="Average" />
+              <LegendDot color="#f97316" label="Lowest" />
+              <LegendDot color="#a855f7" label="Your Mark" />
+            </div>
+          </Card>
+
+          {/* CIA / PERFORMANCE TREND */}
+          <Card title="Performance Trend (CIA / Internal)">
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RLineChart data={ciaTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                  <XAxis dataKey="subjectName" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0f172a",
+                      border: "1px solid #1e293b",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "#e5e7eb" }}
+                    itemStyle={{ color: "#e5e7eb" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#38bdf8"
+                    strokeWidth={2.2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
+                </RLineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* RADAR – SUBJECT STRENGTH */}
+          <Card title="Subject Strength Radar">
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData}>
+                  <PolarGrid />
+                  <PolarAngleAxis
+                    dataKey="subjectName"
+                    tick={{ fontSize: 10, fill: "#4b5563" }}
+                  />
+                  <PolarRadiusAxis
+                    angle={30}
+                    domain={[0, 10]}
+                    tick={{ fontSize: 9, fill: "#9ca3af" }}
+                  />
+                  <Radar
+                    name="Strength"
+                    dataKey="strength"
+                    stroke="#3b82f6"
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                    isAnimationActive
+                    animationDuration={1000}
+                    animationEasing="ease-out"
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+
+        {/* SECOND ANALYTICS ROW – XP / PERFORMANCE PIE */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* XP GAUGE */}
+          <Card title="Gamified XP Progress">
+            <div className="flex flex-col h-56 justify-between">
+              <XPProgress />
+              <p className="text-[11px] text-slate-500">
+                Earn XP via AI mini-games and streak-based practice. Higher XP
+                unlocks badges and rewards.
+              </p>
+            </div>
+          </Card>
+
+          {/* PERFORMANCE CATEGORY PIE */}
+          <Card title="Subject Performance Distribution">
+            <div className="flex h-56">
+              <div className="w-1/2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RPieChart>
+                    <Pie
+                      data={performancePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius={70}
+                      paddingAngle={2}
+                      isAnimationActive
+                      animationDuration={900}
+                      animationEasing="ease-out"
+                    >
+                      {performancePieData.map((entry, index) => (
+                        <Cell
+                          key={entry.name}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#0f172a",
+                        border: "1px solid #1e293b",
+                        fontSize: 12,
+                      }}
+                      labelStyle={{ color: "#e5e7eb" }}
+                      itemStyle={{ color: "#e5e7eb" }}
+                    />
+                  </RPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="w-1/2 flex flex-col justify-center gap-2">
+                {performancePieData.map((p, i) => (
+                  <div
+                    key={p.name}
+                    className="flex items-center justify-between text-[11px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{
+                          backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
+                        }}
+                      />
+                      <span className="text-slate-700">{p.name}</span>
+                    </div>
+                    <span className="text-slate-500">{p.value} subj</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* SMART SUGGESTIONS */}
+        <Card title="Smart Suggestions (AI-based)">
           {!suggestions || suggestions.length === 0 ? (
-            <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-gray-500">
-              <CheckCircle2 className="w-4 h-4 text-green-500 inline mr-1" />
-              No special suggestions right now.
+            <div className="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-gray-500 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              No special suggestions right now. You are on track.
             </div>
           ) : (
-            <div className="mt-3 space-y-3">
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3">
               {suggestions.slice(0, 3).map((s, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-xl bg-cyan-50 border border-cyan-100 text-sm text-gray-800 flex items-start gap-3"
+                  className="p-3 rounded-xl bg-cyan-50 border border-cyan-100 text-xs text-gray-800 flex flex-col gap-1"
                 >
-                  <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-cyan-700" />
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-gray-500">
                       Period {s.period} • {s.start} – {s.end}
                     </p>
-                    <p className="font-semibold">{s.label}</p>
-                    <p className="text-xs text-emerald-700 mt-1">
-                      {s.suggestion}
-                    </p>
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-cyan-200 text-[10px] text-cyan-700">
+                      <Target className="w-3 h-3 inline mr-1" />
+                      Focus
+                    </span>
                   </div>
-
-                  <div className="px-2 py-1 bg-white border border-cyan-200 rounded-full text-[10px] text-cyan-700">
-                    <Target className="w-3 h-3 inline -mt-0.5 mr-1" />
-                    Focus
-                  </div>
+                  <p className="font-semibold text-[13px]">{s.label}</p>
+                  <p className="text-[11px] text-emerald-700">{s.suggestion}</p>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
 
-        {/* ⭐ GAME XP PROGRESS TILE */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold text-purple-700 flex items-center gap-2">
-                <Star className="w-4 h-4 text-yellow-500" />
-                Gamified Learning Progress
-              </h3>
-              <p className="text-xs text-gray-500">
-                Earn XP by playing mini games during free periods.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate("/student/ai")}
-              className="text-xs px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition"
-            >
-              Play Now
-            </button>
-          </div>
-
-          <XPProgress />
-        </div>
-
-        {/* Announcements */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <h3 className="text-lg font-semibold text-blue-700 flex items-center gap-2">
-            <Bell className="w-4 h-4 text-rose-500" />
-            Important Announcements
-          </h3>
-
-          {!stats?.announcements || stats?.announcements.length === 0 ? (
-            <p className="text-xs text-gray-500 mt-2">
-              No new announcements.
+        {/* INTERESTS */}
+        <Card title="Your Interests">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-[11px] text-slate-500">
+              Used by AI to personalize suggestions and content.
             </p>
-          ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto mt-3">
-              {stats.announcements.map((a, i) => (
-                <div
-                  key={i}
-                  className="p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs"
-                >
-                  • {a}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* BOTTOM SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Quick Links */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">
-            <BookOpen className="w-4 h-4 text-indigo-500 inline mr-1" />
-            Quick Navigation
-          </h3>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              onClick={() => navigate("/student/schedule")}
-              className="p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100"
-            >
-              <CalendarDays className="w-4 h-4 text-indigo-600" />
-              <p className="font-semibold text-indigo-700">Timetable</p>
-            </button>
-
-            <button
-              onClick={() => navigate("/student/assignments")}
-              className="p-3 rounded-xl bg-violet-50 hover:bg-violet-100"
-            >
-              <ListTodo className="w-4 h-4 text-violet-600" />
-              <p className="font-semibold text-violet-700">Assignments</p>
-            </button>
-
-            <button
-              onClick={() => navigate("/student/attendance")}
-              className="p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100"
-            >
-              <BarChart2 className="w-4 h-4 text-emerald-600" />
-              <p className="font-semibold text-emerald-700">Attendance</p>
-            </button>
-
-            <button
-              onClick={() => navigate("/student/leave")}
-              className="p-3 rounded-xl bg-amber-50 hover:bg-amber-100"
-            >
-              <Clock className="w-4 h-4 text-amber-600" />
-              <p className="font-semibold text-amber-700">Leave / OD</p>
-            </button>
-          </div>
-        </div>
-
-        {/* Interests */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-sky-500" />
-              Your Interests
-            </h3>
             <button
               onClick={() => setShowInterestForm(true)}
               className="text-[10px] text-blue-600 underline"
@@ -460,9 +679,7 @@ export default function StudentDashboard() {
           </div>
 
           {!user?.interests?.length ? (
-            <p className="text-xs text-gray-500">
-              No interests selected yet.
-            </p>
+            <p className="text-xs text-gray-500">No interests selected yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {user.interests.map((int) => (
@@ -476,28 +693,13 @@ export default function StudentDashboard() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Nudges */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Target className="w-4 h-4 text-rose-500" />
-            Smart Nudges
-          </h3>
-
-          <ul className="text-xs space-y-2 text-gray-700">
-            <li>• Use free periods wisely — check Smart Suggestions.</li>
-            <li>• Maintain attendance ≥ 75% to avoid exam issues.</li>
-            <li>• Use AI Mentor when stuck on assignments.</li>
-          </ul>
-        </div>
-
+        </Card>
       </div>
 
-      {/* Interest Modal */}
+      {/* INTEREST MODAL */}
       {showInterestForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl relative">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl relative border border-slate-200">
             <button
               onClick={() => setShowInterestForm(false)}
               className="absolute right-3 top-3"
@@ -507,7 +709,7 @@ export default function StudentDashboard() {
 
             <h2 className="text-xl font-bold text-blue-700">Select Interests</h2>
             <p className="text-xs text-gray-500">
-              Used to personalize your AI suggestions.
+              This helps us tailor smart suggestions and learning paths for you.
             </p>
 
             <div className="flex flex-wrap gap-2 mt-4 max-h-52 overflow-y-auto p-2 border rounded-xl">
@@ -523,10 +725,10 @@ export default function StudentDashboard() {
                           : [...prev, int]
                       )
                     }
-                    className={`px-3 py-1 rounded-full text-xs border ${
+                    className={`px-3 py-1 rounded-full text-xs border transition ${
                       selected
                         ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-gray-50 text-gray-700 border-gray-200"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
                     }`}
                   >
                     {selected && (
@@ -540,29 +742,106 @@ export default function StudentDashboard() {
 
             <button
               onClick={saveInterests}
-              className="mt-4 w-full bg-blue-700 hover:bg-blue-800 text-white py-2 rounded-xl"
+              disabled={savingInterests}
+              className="mt-4 w-full bg-blue-700 hover:bg-blue-800 text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
             >
-              Save Interests
+              {savingInterests ? "Saving…" : "Save Interests"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Face Registration Modal */}
+      {/* FACE REGISTRATION MODAL */}
       {showRegisterModal && (
         <FaceRegistrationModal
           open={showRegisterModal}
           onClose={() => setShowRegisterModal(false)}
         />
       )}
-
     </div>
   );
 }
 
-/* ----------------------------------------------------------
-   ⭐ XP PROGRESS COMPONENT (ADDED BY GPT, DO NOT REMOVE)
------------------------------------------------------------ */
+/* ─────────────────────────  SMALL COMPONENTS  ───────────────────────── */
+
+function StatCard({ icon: Icon, label, value, chip }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="absolute -right-8 -top-10 h-20 w-20 rounded-full bg-sky-200/40 blur-2xl" />
+      <div className="p-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+            {label}
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+          <p className="mt-1 text-[11px] text-slate-500">{chip}</p>
+        </div>
+        <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+          <Icon className="h-5 w-5 text-sky-500" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Card({ title, children }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="px-4 pt-3 pb-2 border-b border-slate-200 flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <p className="text-[11px] font-medium tracking-[0.14em] uppercase text-slate-700">
+          {title}
+        </p>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function QuickNavButton({ icon: Icon, label, color, onClick }) {
+  const bgMap = {
+    indigo: "bg-indigo-50 hover:bg-indigo-100",
+    violet: "bg-violet-50 hover:bg-violet-100",
+    emerald: "bg-emerald-50 hover:bg-emerald-100",
+    amber: "bg-amber-50 hover:bg-amber-100",
+  };
+  const textMap = {
+    indigo: "text-indigo-700",
+    violet: "text-violet-700",
+    emerald: "text-emerald-700",
+    amber: "text-amber-700",
+  };
+  const iconMap = {
+    indigo: "text-indigo-600",
+    violet: "text-violet-600",
+    emerald: "text-emerald-600",
+    amber: "text-amber-600",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`p-3 rounded-xl ${bgMap[color]} border border-slate-100 flex flex-col gap-1 transition`}
+    >
+      <Icon className={`w-4 h-4 ${iconMap[color]}`} />
+      <p className={`font-semibold ${textMap[color]} text-[12px]`}>{label}</p>
+    </button>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span
+        className="inline-block h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+/* ─────────────────────────  XP PROGRESS  ───────────────────────── */
 
 function XPProgress() {
   const [xp, setXp] = useState(0);
@@ -581,20 +860,18 @@ function XPProgress() {
       return {
         text: "🎉 All rewards unlocked including Internship!",
         percent: 100,
-        nextLabel: "All Rewards Unlocked",
       };
     }
     return {
       percent: Math.min(100, (xp / next.xp) * 100),
       text: `You need ${next.xp - xp} XP more to unlock ${next.label}`,
-      nextLabel: next.label,
     };
   };
 
   const reward = getRewardProgress();
 
   useEffect(() => {
-    const fetchXP = async () => {
+    async function loadXP() {
       try {
         const token = localStorage.getItem("token");
         const res = await fetch("http://localhost:5000/api/student/xp", {
@@ -602,38 +879,58 @@ function XPProgress() {
         });
         const data = await res.json();
         setXp(data.totalXP || 0);
-      } catch (e) {
-        console.error("XP Load Error:", e);
+      } catch (err) {
+        console.error("XP Load Error:", err);
       } finally {
         setLoading(false);
       }
-    };
-    fetchXP();
+    }
+    loadXP();
   }, []);
 
   if (loading) {
     return (
-      <div className="mt-3 flex items-center gap-3 text-gray-500">
-        <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent animate-spin rounded-full"></div>
-        Loading XP…
+      <div className="mt-2 flex items-center gap-3 text-gray-500">
+        <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent animate-spin rounded-full" />
+        <span className="text-xs">Loading XP…</span>
       </div>
     );
   }
 
   return (
-    <div className="mt-3">
-      {/* Total XP */}
-      <p className="text-2xl font-bold text-purple-700">{xp} XP</p>
-      <p className="text-[11px] text-gray-500 mb-3">
-        Total XP earned through AI mini-games.
-      </p>
+    <div className="flex flex-col items-start gap-2">
+      <div className="flex items-center gap-3">
+        <div className="relative h-16 w-16">
+          <div className="absolute inset-0 rounded-full bg-purple-100" />
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `conic-gradient(#a855f7 ${
+                reward.percent * 3.6
+              }deg, #e5e7eb 0deg)`,
+            }}
+          />
+          <div className="relative h-10 w-10 rounded-full bg-white flex items-center justify-center top-3 left-3 shadow-sm">
+            <span className="text-xs font-semibold text-purple-700">
+              {xp} XP
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-purple-700">
+            Leveling up your learning
+          </p>
+          <p className="text-[11px] text-slate-500 max-w-[180px]">
+            Keep playing mini-games and completing tasks to unlock more rewards.
+          </p>
+        </div>
+      </div>
 
-      {/* Progress Bar */}
-      <div className="w-full bg-purple-200 h-3 rounded-full overflow-hidden mb-1">
+      <div className="w-full bg-purple-100 h-2 rounded-full overflow-hidden">
         <div
           className="h-full bg-purple-600 transition-all duration-500"
           style={{ width: `${reward.percent}%` }}
-        ></div>
+        />
       </div>
 
       <p className="text-[11px] text-purple-700">{reward.text}</p>

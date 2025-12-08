@@ -1,14 +1,30 @@
-import crypto from "crypto";
+import QRCode from "qrcode";
+import AttendanceQR from "../models/AttendanceQR.js";
 
-export const getCurrentQR = (req, res) => {
-  const now = Math.floor(Date.now() / 1000);
-  const interval = Math.floor(now / 30); // rotates every 30 seconds
+// Generate New QR every time (for demo)
+export const getCurrentQR = async (req, res) => {
+  try {
+    let qrRecord = await AttendanceQR.findOne();
 
-  const raw = `VIDYATRA-${interval}`;
-  const secret = crypto.createHash("sha256").update(raw).digest("hex");
+    if (!qrRecord) {
+      qrRecord = await AttendanceQR.create({
+        qrCode: "WELCOME-QR",
+        expiresAt: Date.now() + 30000,
+      });
+    }
 
-  return res.json({
-    qrCode: secret,
-    expiresIn: 30 - (now % 30),
-  });
+    // Refresh QR every time
+    const newCode = "QR-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+    qrRecord.qrCode = newCode;
+    qrRecord.expiresAt = Date.now() + 30000; // expires in 30s
+    await qrRecord.save();
+
+    return res.json({
+      qrCode: qrRecord.qrCode,
+      expiresIn: Math.max(0, Math.floor((qrRecord.expiresAt - Date.now()) / 1000))
+    });
+  } catch (err) {
+    console.error("QR ERROR:", err);
+    res.status(500).json({ message: "QR generation failed" });
+  }
 };

@@ -1,35 +1,62 @@
 export const checkWifiAuth = (req, res) => {
-  console.log("RAW IP logs:");
-  console.log("req.ip =>", req.ip);
-  console.log("connection.remoteAddress =>", req.connection.remoteAddress);
-  console.log("headers['x-forwarded-for'] =>", req.headers['x-forwarded-for']);
+  try {
+    console.log("=== WIFI AUTH CHECK START ===");
 
-  const ip =
-    req.headers["x-forwarded-for"] ||
-    req.connection.remoteAddress ||
-    req.ip;
+    // IP (for debugging only – NOT for rejecting)
+    const ip =
+      req.headers["x-forwarded-for"] ||
+      req.connection.remoteAddress ||
+      req.ip;
 
-  const cleanIP = ip.replace("::ffff:", "");
+    const cleanIP = (ip || "").replace("::ffff:", "");
+    console.log("Client IP =", cleanIP);
 
-  console.log("CLEAN IP =>", cleanIP);
+    // APPROVED HOTSPOTS
+    const allowedSSIDs = [
+      "Sujith's Phone",
+      "OPPO Hotspot",
+      "AndroidAP",
+      "realme 9 Pro+",
+      "REALME hotspot",
+      "Vidyatra WiFi"
+    ];
 
-  const allowedRanges = ["10.217.193."];
+    // SSID from frontend (optional)
+    const clientSSID = req.headers["x-wifi-ssid"];
 
-  const isValid = allowedRanges.some(prefix =>
-    cleanIP.startsWith(prefix)
-  );
+    // If frontend sends SSID → use strict check
+    if (clientSSID) {
+      console.log("Received SSID =", clientSSID);
 
-  if (!isValid) {
-    return res.status(403).json({
+      if (!allowedSSIDs.includes(clientSSID)) {
+        return res.json({
+          success: false,
+          message: `Connected to ${clientSSID}, not an approved hotspot ❌`,
+          ip: cleanIP,
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: `WiFi Verified ✔ Connected to ${clientSSID}`,
+        ip: cleanIP,
+      });
+    }
+
+    // If SSID unavailable → fallback allow
+    console.log("SSID NOT PROVIDED → fallback allow mode.");
+
+    return res.json({
+      success: true,
+      message: "WiFi Verified ✔ (fallback mode)",
+      ip: cleanIP,
+    });
+
+  } catch (err) {
+    console.error("WIFI CHECK ERROR:", err);
+    return res.status(500).json({
       success: false,
-      message: "Not connected to authorized hotspot ❌",
-      ip: cleanIP,       // 👈 Return what backend sees
+      message: "WiFi verification failed ❌",
     });
   }
-
-  return res.json({
-    success: true,
-    message: "Connected to Authorized Hotspot ✔",
-    ip: cleanIP,        // 👈 Return what backend sees
-  });
 };

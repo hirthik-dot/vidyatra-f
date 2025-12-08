@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 // Login
 import Login from "./pages/Login";
+import "leaflet/dist/leaflet.css";
+
 
 // LAYOUTS
 import StudentLayout from "./student/StudentLayout";

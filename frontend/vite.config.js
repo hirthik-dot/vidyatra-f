@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import mkcert from "vite-plugin-mkcert";
 
 export default defineConfig({
   plugins: [
     react(),
+    mkcert(), // 🔥 Enables HTTPS with local certificates
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
@@ -39,7 +41,15 @@ export default defineConfig({
   ],
 
   server: {
-    host: true, // allows LAN & hotspot access
+    https: true, // 🔥 HTTPS enabled for GPS & secure geolocation
+    host: true,  // 🔥 Allows LAN/mobile devices to connect (hotspot)
     port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

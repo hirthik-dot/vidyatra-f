@@ -1,130 +1,157 @@
 // backend/controllers/gameController.js
-import ollama from "ollama";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import GameHistory from "../models/GameHistory.js"; 
+import User from "../models/User.js";
 
-// In-memory cache to prevent regenerating same game
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const gameCache = new Map();
 
-// Utility: clean broken JSON safely
-function safeJsonParse(str) {
+// ---------- HELPERS ----------
+function safeParseJSON(str) {
   try {
-    // Remove any non-JSON junk before/after bracket
     const cleaned = str.substring(str.indexOf("{"), str.lastIndexOf("}") + 1);
     return JSON.parse(cleaned);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
 
-// MAIN FUNCTION
+function detectGameType(gameId) {
+  const id = gameId.toLowerCase();
+
+  if (id.includes("sql") || id.includes("query")) return "debugging";
+  if (id.includes("security") || id.includes("cyber")) return "security";
+  if (id.includes("order") || id.includes("sort")) return "ordering";
+
+  return "mcq";
+}
+
+function xpForDifficulty(d) {
+  if (d === "easy") return 10;
+  if (d === "medium") return 20;
+  return 40;
+}
+
+// ---------- ADAPTIVE DIFFICULTY ----------
+async function getAdaptiveDifficulty(userId, gameId) {
+  const history = await GameHistory.find({ userId, gameId })
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+  if (history.length < 2) return "easy";
+
+  const recentScores = history.map((h) => h.correct ? 1 : 0);
+  const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+
+  if (avg >= 0.8) return "hard";     // consistently right → hard mode
+  if (avg >= 0.4) return "medium";   // mixed accuracy → medium
+  return "easy";                     // struggling → easy
+}
+
+// ---------- MAIN GAME GENERATION ----------
 export const generateGameQuestion = async (req, res) => {
   try {
+    const userId = req.user._id;
     const { gameId } = req.body;
 
-    if (!gameId) {
+    if (!gameId)
       return res.status(400).json({ message: "gameId is required" });
-    }
 
-    // If already generated once → return cached
-    if (gameCache.has(gameId)) {
-      return res.json(gameCache.get(gameId));
-    }
+    const autoType = detectGameType(gameId);
 
+    // --- Get adaptive difficulty ---
+    const adaptiveDifficulty = await getAdaptiveDifficulty(userId, gameId);
+    console.log("🎯 Adaptive difficulty:", adaptiveDifficulty);
+
+    // --- PROMPT WITH STRICT TEMPLATES ---
     const prompt = `
-You are an expert educational content generator.
-Your job is to output PERFECT JSON for interactive learning games.
+You are an expert educational game generator.
+You must output STRICT JSON ONLY.
 
-Follow this EXACT structure:
+GAME TYPE: "${autoType}"
+GOAL DIFFICULTY: "${adaptiveDifficulty}"
+
+JSON TEMPLATE (USE EXACTLY THIS, NO EXTRA FIELDS):
 
 {
-  "gameId": "string",
+  "gameId": "${gameId}",
   "title": "string",
   "description": "string",
-  "type": "mcq | ordering | debugging | security",
-  "difficulty": "easy | medium | hard",
+  "type": "${autoType}",
+  "difficulty": "${adaptiveDifficulty}",
   "xp": number,
   "question": {
     "prompt": "string",
-
-    // For ordering games
     "items": [],
     "correctOrder": [],
-
-    // For MCQs
     "options": [],
     "correct": "",
     "explanation": "",
-
-    // For debugging/security
     "code": "",
     "correctExplanation": ""
   }
 }
 
-Rules:
-- Only output JSON.
-- No text before or after JSON.
-- Be clear, high-quality, and professional.
-- Difficulty should match real academic content.
+RULES:
+- OUTPUT JSON ONLY, NO MARKDOWN.
+- difficulty MUST be "${adaptiveDifficulty}"
+- xp MUST match difficulty: easy=10, medium=20, hard=40
+- The game MUST be solvable by a student.
+- The JSON MUST BE CLEAN.
+- Follow template EXACTLY.
 
-You are an educational AI. 
-Your output is ONLY clean JSON.
-
-STRICT RULES:
-- Do NOT add any advice like "discuss with mentor" or "validate in demo".
-- Do NOT mention teachers, judges, mentors, demos, or external validation.
-- The student MUST be able to complete the task independently.
-- The answer MUST be verifiable and clear.
-- No surrounding text, only JSON.
-
-Follow this EXACT structure:
-
-{ ... JSON STRUCTURE HERE ... }
-
-
-Now generate a high quality game question for: "${gameId}"
+Now create a UNIQUE question for "${gameId}".
 `;
 
-    const models = ["qwen2.5:7b", "qwen2.5-coder:7b", "llama3.1:8b"];
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    let finalJson = null;
+    let output = null;
 
-    // Try each model with retries
-    for (const model of models) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          console.log(`🧠 Generating with ${model}, attempt ${attempt}`);
+    for (let i = 1; i <= 3; i++) {
+      console.log(`⚡ Gemini attempt ${i}`);
 
-          const response = await ollama.generate({
-            model,
-            prompt,
-            format: "json"
-          });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const parsed = safeParseJSON(text);
 
-          // Try parsing JSON safely
-          const parsed = safeJsonParse(response.response);
+      if (!parsed) continue;
 
-          if (parsed && parsed.gameId) {
-            console.log(`✅ Success with ${model}`);
+      // XP auto-apply
+      parsed.xp = xpForDifficulty(parsed.difficulty);
 
-            // Cache result so repeated loads are instant
-            gameCache.set(gameId, parsed);
+      // Avoid duplicates
+      const cached = gameCache.get(gameId);
+      if (cached && cached.question.prompt === parsed.question.prompt)
+        continue;
 
-            return res.json(parsed);
-          } else {
-            console.log(`⚠️ Invalid JSON from ${model}:`, response.response);
-          }
-        } catch (err) {
-          console.log(`❌ Error with ${model}, attempt ${attempt}:`, err);
-        }
-      }
+      output = parsed;
+      break;
     }
 
-    // If all retries fail
-    return res
-      .status(500)
-      .json({ message: "All AI models failed to generate valid JSON." });
-  } catch (error) {
-    console.error("❌ Fatal AI Error:", error);
-    res.status(500).json({ message: "Backend AI error" });
+    if (!output) {
+      return res
+        .status(500)
+        .json({ message: "Gemini failed to produce valid JSON after retries." });
+    }
+
+    // Cache new question
+    gameCache.set(gameId, output);
+
+    // Store in Database (Analytics)
+    await GameHistory.create({
+      userId,
+      gameId,
+      question: output.question.prompt,
+      difficulty: output.difficulty,
+      xp: output.xp,
+      correct: null, // not answered yet
+    });
+
+    return res.json(output);
+  } catch (err) {
+    console.error("❌ PRO MAX ENGINE ERROR:", err);
+    res.status(500).json({
+      message: "Game engine error",
+    });
   }
 };

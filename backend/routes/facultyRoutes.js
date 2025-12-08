@@ -1,64 +1,48 @@
 // backend/routes/facultyRoutes.js
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import protect from "../middleware/AuthMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+
+import {
+  getMyClassStudents,
+  getPresentStudentsForFaculty,
+  getFacultyAttendanceForDay,
+} from "../controllers/FacultyAttendanceController.js";
 
 import {
   getFacultyTodayTimetable,
   markFacultyPeriodAbsent,
   getTodayFreePeriods,
   claimFreePeriod,
+  getFacultyWeeklyTimetable
 } from "../controllers/FacultyTimetableController.js";
 
-import {
-  getMyClassStudents,
-  getPresentStudentsForFaculty,
-  getFacultyAttendanceForDay,   // ✅ ADDED IMPORT
-} from "../controllers/FacultyAttendanceController.js";
-
-import { getFacultyWeeklyTimetable } from "../controllers/FacultyTimetableController.js";
-
+import { getFacultyDashboard } from "../controllers/facultyDashboardController.js";
 
 const router = express.Router();
 
-// Helper: protects faculty routes
-const protectFaculty = [authMiddleware, requireRole("faculty")];
+// Protect + Restrict to faculty
+const protectFaculty = [protect, requireRole("faculty")];
+
+/* ---------------------------------------------------------
+   FACULTY DASHBOARD
+---------------------------------------------------------- */
+router.get("/dashboard", protectFaculty, getFacultyDashboard);
 
 /* ---------------------------------------------------------
    FACULTY TIMETABLE ROUTES
 ---------------------------------------------------------- */
-
-// Get today's timetable
 router.get("/timetable", protectFaculty, getFacultyTodayTimetable);
-
-// Mark period absent
 router.post("/timetable/mark-absent", protectFaculty, markFacultyPeriodAbsent);
-
-// Get all free periods
 router.get("/free-periods", protectFaculty, getTodayFreePeriods);
-
-// Claim (attend) a free period
 router.post("/timetable/claim", protectFaculty, claimFreePeriod);
+router.get("/timetable/weekly", protectFaculty, getFacultyWeeklyTimetable);
 
 /* ---------------------------------------------------------
    FACULTY ATTENDANCE ROUTES
 ---------------------------------------------------------- */
-
-// Get students of faculty’s class
 router.get("/students", protectFaculty, getMyClassStudents);
-
-// Get students present in current period
 router.get("/attendance/current", protectFaculty, getPresentStudentsForFaculty);
-
-// ⭐ NEW → Get FULL day attendance
 router.get("/attendance/day", protectFaculty, getFacultyAttendanceForDay);
-
-router.get(
-  "/timetable/weekly",
-  authMiddleware,
-  requireRole("faculty"),
-  getFacultyWeeklyTimetable
-);
-
 
 export default router;
