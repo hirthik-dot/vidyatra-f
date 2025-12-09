@@ -14,13 +14,26 @@ const DAYS = [
   "Saturday",
 ];
 
-// Convert "09:30" → minutes
-function timeStringToMinutes(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
+// ---------- QR SYSTEM ----------
+let currentQR = null;
+let qrExpiry = 0;
+
+// Generate a new QR every 30 seconds
+export const generateQR = () => {
+  currentQR = Math.random().toString(36).substring(2, 10).toUpperCase();
+  qrExpiry = Date.now() + 30000;
+};
+
+// Auto-generate first QR
+generateQR();
+setInterval(generateQR, 30000);
+
+// ---------- UTIL ----------
+function timeStringToMinutes(str) {
+  const [h, m] = str.split(":").map(Number);
   return h * 60 + m;
 }
 
-// Today 00:00 → 23:59
 function getTodayRange() {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -31,18 +44,18 @@ function getTodayRange() {
   return { start, end };
 }
 
+// ============================================================
+// MARK ATTENDANCE
+// ============================================================
+
 export const markStudentAttendance = async (req, res) => {
   try {
-    // 🔥 ADDED: geoVerified beside existing Bluetooth variable
-    const { wifiVerified, bluetoothVerified, geoVerified, faceVerified, qrVerified } =
-      req.body;
+    const { wifiVerified, geoVerified, faceVerified, qrVerified } = req.body;
 
-    // -------------------------------------------
-    // 1️⃣ VERIFY AUTH PATH (Modified for Geo instead of Bluetooth)
-    // -------------------------------------------
+    // VALIDATION PATHS
     const ok =
       (wifiVerified && faceVerified) ||
-      (geoVerified && faceVerified) ||     // 🔥 NEW
+      (geoVerified && faceVerified) ||
       qrVerified;
 
     if (!ok) {
@@ -55,16 +68,11 @@ export const markStudentAttendance = async (req, res) => {
     const user = req.user;
     const className = user.className;
 
-    // -------------------------------------------
-    // 2️⃣ GET TODAY'S TIMETABLE
-    // -------------------------------------------
+    // ---------- GET TODAY ----------
     let todayName = DAYS[new Date().getDay()];
+    if (todayName === "Saturday" || todayName === "Sunday") todayName = "Monday";
 
-    // Optional weekend fallback
-    if (todayName === "Saturday" || todayName === "Sunday") {
-      todayName = "Monday";
-    }
-
+    // ---------- GET TIMETABLE ----------
     const timetable = await ClassTimetable.findOne({
       className,
       day: todayName,
@@ -72,14 +80,12 @@ export const markStudentAttendance = async (req, res) => {
 
     if (!timetable) {
       return res.json({
-        message: "Demo Mode: Attendance marked (no timetable found).",
+        message: "Demo Mode: Attendance marked ✔",
         demoMode: true,
       });
     }
 
-    // -------------------------------------------
-    // 3️⃣ DETECT CURRENT PERIOD
-    // -------------------------------------------
+    // ---------- DETECT CURRENT PERIOD ----------
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -87,10 +93,10 @@ export const markStudentAttendance = async (req, res) => {
     let demoMode = false;
 
     for (const p of timetable.periods) {
-      const startMins = timeStringToMinutes(p.start);
-      const endMins = timeStringToMinutes(p.end);
+      const start = timeStringToMinutes(p.start);
+      const end = timeStringToMinutes(p.end);
 
-      if (nowMinutes >= startMins && nowMinutes <= endMins) {
+      if (nowMinutes >= start && nowMinutes <= end) {
         currentPeriod = p;
         break;
       }
@@ -101,26 +107,22 @@ export const markStudentAttendance = async (req, res) => {
       demoMode = true;
     }
 
-    // -------------------------------------------
-    // 4️⃣ CHECK IF ALREADY MARKED TODAY
-    // -------------------------------------------
+    // ---------- CHECK IF ALREADY MARKED ----------
     const { start, end } = getTodayRange();
 
-    const existing = await Attendance.findOne({
+    const exists = await Attendance.findOne({
       student: user._id,
       period: currentPeriod.period,
       date: { $gte: start, $lte: end },
     });
 
-    if (existing) {
+    if (exists) {
       return res.status(400).json({
         message: `Attendance already marked for period ${currentPeriod.period}.`,
       });
     }
 
-    // -------------------------------------------
-    // 5️⃣ SAVE ATTENDANCE  (Modified: Added location)
-    // -------------------------------------------
+    // ---------- SAVE ----------
     const attendance = await Attendance.create({
       student: user._id,
       className,
@@ -130,8 +132,8 @@ export const markStudentAttendance = async (req, res) => {
       subject: currentPeriod.subject,
       methods: {
         wifi: !!wifiVerified,
-        bluetooth: false,        // 🔥 force false (kept for schema compatibility)
-        location: !!geoVerified, // 🔥 NEW FIELD
+        bluetooth: false,
+        location: !!geoVerified,
         face: !!faceVerified,
         qr: !!qrVerified,
       },
@@ -145,25 +147,81 @@ export const markStudentAttendance = async (req, res) => {
     });
   } catch (err) {
     console.error("Mark attendance error:", err);
-    return res.status(500).json({ message: "Server error marking attendance" });
+    return res
+      .status(500)
+      .json({ message: "Server error marking attendance" });
   }
 };
 
-// ---------------------------------------------------------------
-// LIVE QR (already correct)
-// ---------------------------------------------------------------
+// ============================================================
+// LIVE QR ENDPOINT
+// ============================================================
+
 export const getLiveQR = (req, res) => {
-  const timeLeft = Math.max(0, Math.floor((qrExpiry - Date.now()) / 1000));
+  const remaining = Math.max(0, Math.floor((qrExpiry - Date.now()) / 1000));
 
   return res.json({
     qrCode: currentQR,
-    expiresIn: timeLeft,
+    expiresIn: remaining,
   });
 };
 
-// ---------------------------------------------------------------
-// GET PRESENT STUDENTS FOR CURRENT PERIOD (works fine)
-// ---------------------------------------------------------------
+// ============================================================
+// WIFI VERIFICATION
+// ============================================================
+
+export const verifyWifiConnection = (req, res) => {
+  try {
+    console.log("=== WIFI AUTH CHECK START ===");
+
+    // Browser always sends this → works behind Vite proxy too
+    const hostHeader = req.headers.host || "";
+    console.log("Host Header =", hostHeader);
+
+    // Extract the base IP without port
+    const hostIP = hostHeader.split(":")[0];  // e.g. "172.28.29.117"
+
+    // SIH + Hotspot allowed ranges
+    const allowedPrefixes = [
+      "172.28.",       // Your SIH WiFi range
+      "10.123.226.",   // SIH internal DHCP
+      "192.168.43.",   // Android hotspot
+      "192.168.137.",  // Windows hotspot
+    ];
+
+    const isAllowed = allowedPrefixes.some(prefix =>
+      hostIP.startsWith(prefix)
+    );
+
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: "Not connected to allowed Wi-Fi ❌",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Wi-Fi Verified ✔",
+    });
+
+  } catch (err) {
+    console.error("Wi-Fi check error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error verifying Wi-Fi",
+    });
+  }
+};
+
+
+
+  
+
+// ============================================================
+// ACTIVE CLASS PRESENT STUDENTS
+// ============================================================
+
 export const getPresentStudentsForCurrentPeriod = async (req, res) => {
   try {
     const facultyId = req.user._id;
@@ -196,9 +254,9 @@ export const getPresentStudentsForCurrentPeriod = async (req, res) => {
     }
 
     if (!activeClass) {
-      return res.status(400).json({
-        message: "No active class to list attendance.",
-      });
+      return res
+        .status(400)
+        .json({ message: "No active class to check attendance." });
     }
 
     const { start, end } = getTodayRange();
@@ -209,10 +267,10 @@ export const getPresentStudentsForCurrentPeriod = async (req, res) => {
       date: { $gte: start, $lte: end },
     }).populate("student");
 
-    const students = records.map((rec) => ({
-      name: rec.student.name,
-      roll: rec.student.roll || "",
-      period: rec.period,
+    const students = records.map((r) => ({
+      name: r.student.name,
+      roll: r.student.roll || "",
+      period: r.period,
     }));
 
     return res.json({
@@ -222,6 +280,8 @@ export const getPresentStudentsForCurrentPeriod = async (req, res) => {
     });
   } catch (err) {
     console.error("Present students error:", err);
-    return res.status(500).json({ message: "Error loading attendance list" });
+    return res.status(500).json({
+      message: "Error loading present students",
+    });
   }
 };

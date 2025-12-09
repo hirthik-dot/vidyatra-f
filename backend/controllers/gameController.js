@@ -1,38 +1,17 @@
-// backend/controllers/gameController.js
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import GameHistory from "../models/GameHistory.js"; 
+import GameHistory from "../models/GameHistory.js";
 import User from "../models/User.js";
+import missionsRandom from "../data/missionsRandom.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const gameCache = new Map();
 
-// ---------- HELPERS ----------
-function safeParseJSON(str) {
-  try {
-    const cleaned = str.substring(str.indexOf("{"), str.lastIndexOf("}") + 1);
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
-  }
-}
-
-function detectGameType(gameId) {
-  const id = gameId.toLowerCase();
-
-  if (id.includes("sql") || id.includes("query")) return "debugging";
-  if (id.includes("security") || id.includes("cyber")) return "security";
-  if (id.includes("order") || id.includes("sort")) return "ordering";
-
-  return "mcq";
-}
-
+/* XP ENGINE */
 function xpForDifficulty(d) {
   if (d === "easy") return 10;
   if (d === "medium") return 20;
   return 40;
 }
 
-// ---------- ADAPTIVE DIFFICULTY ----------
+/* ADAPTIVE DIFFICULTY */
 async function getAdaptiveDifficulty(userId, gameId) {
   const history = await GameHistory.find({ userId, gameId })
     .sort({ createdAt: -1 })
@@ -40,118 +19,72 @@ async function getAdaptiveDifficulty(userId, gameId) {
 
   if (history.length < 2) return "easy";
 
-  const recentScores = history.map((h) => h.correct ? 1 : 0);
-  const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+  const recent = history.map((h) => (h.correct ? 1 : 0));
+  const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
 
-  if (avg >= 0.8) return "hard";     // consistently right → hard mode
-  if (avg >= 0.4) return "medium";   // mixed accuracy → medium
-  return "easy";                     // struggling → easy
+  if (avg >= 0.8) return "hard";
+  if (avg >= 0.4) return "medium";
+  return "easy";
 }
 
-// ---------- MAIN GAME GENERATION ----------
+/* MAIN CONTROLLER – RANDOM MISSION MODE */
 export const generateGameQuestion = async (req, res) => {
   try {
     const userId = req.user._id;
     const { gameId } = req.body;
 
-    if (!gameId)
+    if (!gameId) {
       return res.status(400).json({ message: "gameId is required" });
-
-    const autoType = detectGameType(gameId);
-
-    // --- Get adaptive difficulty ---
-    const adaptiveDifficulty = await getAdaptiveDifficulty(userId, gameId);
-    console.log("🎯 Adaptive difficulty:", adaptiveDifficulty);
-
-    // --- PROMPT WITH STRICT TEMPLATES ---
-    const prompt = `
-You are an expert educational game generator.
-You must output STRICT JSON ONLY.
-
-GAME TYPE: "${autoType}"
-GOAL DIFFICULTY: "${adaptiveDifficulty}"
-
-JSON TEMPLATE (USE EXACTLY THIS, NO EXTRA FIELDS):
-
-{
-  "gameId": "${gameId}",
-  "title": "string",
-  "description": "string",
-  "type": "${autoType}",
-  "difficulty": "${adaptiveDifficulty}",
-  "xp": number,
-  "question": {
-    "prompt": "string",
-    "items": [],
-    "correctOrder": [],
-    "options": [],
-    "correct": "",
-    "explanation": "",
-    "code": "",
-    "correctExplanation": ""
-  }
-}
-
-RULES:
-- OUTPUT JSON ONLY, NO MARKDOWN.
-- difficulty MUST be "${adaptiveDifficulty}"
-- xp MUST match difficulty: easy=10, medium=20, hard=40
-- The game MUST be solvable by a student.
-- The JSON MUST BE CLEAN.
-- Follow template EXACTLY.
-
-Now create a UNIQUE question for "${gameId}".
-`;
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    let output = null;
-
-    for (let i = 1; i <= 3; i++) {
-      console.log(`⚡ Gemini attempt ${i}`);
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      const parsed = safeParseJSON(text);
-
-      if (!parsed) continue;
-
-      // XP auto-apply
-      parsed.xp = xpForDifficulty(parsed.difficulty);
-
-      // Avoid duplicates
-      const cached = gameCache.get(gameId);
-      if (cached && cached.question.prompt === parsed.question.prompt)
-        continue;
-
-      output = parsed;
-      break;
     }
 
-    if (!output) {
-      return res
-        .status(500)
-        .json({ message: "Gemini failed to produce valid JSON after retries." });
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Cache new question
-    gameCache.set(gameId, output);
+    // NO MORE INTEREST LOGIC → RANDOM MISSION
+    const randomIndex = Math.floor(Math.random() * missionsRandom.length);
+    const mission = missionsRandom[randomIndex];
 
-    // Store in Database (Analytics)
+    const cacheKey = `${gameId}::${mission.title}`;
+    const cached = gameCache.get(cacheKey);
+    if (cached) {
+      await new Promise((r) => setTimeout(r, 500));
+      return res.json(cached);
+    }
+
+    const difficulty = await getAdaptiveDifficulty(userId, gameId);
+    const xp = xpForDifficulty(difficulty);
+
+    const learningPath = {
+      gameId,
+      title: mission.title,
+      description: mission.description,
+      type: "learning_path",
+      difficulty,
+      xp,
+      interest: mission.interest,
+      steps: mission.steps,
+    };
+
+    await new Promise((r) => setTimeout(r, 900));
+
+    gameCache.set(cacheKey, learningPath);
+
     await GameHistory.create({
       userId,
       gameId,
-      question: output.question.prompt,
-      difficulty: output.difficulty,
-      xp: output.xp,
-      correct: null, // not answered yet
+      question: learningPath.title,
+      difficulty,
+      xp,
+      correct: null,
     });
 
-    return res.json(output);
+    return res.json(learningPath);
   } catch (err) {
-    console.error("❌ PRO MAX ENGINE ERROR:", err);
-    res.status(500).json({
-      message: "Game engine error",
-    });
+    console.error("❌ Learning Path Engine ERROR:", err);
+    return res
+      .status(500)
+      .json({ message: "Learning path engine error (random mode)" });
   }
 };

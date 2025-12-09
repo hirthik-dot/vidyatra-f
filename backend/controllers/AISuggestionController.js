@@ -1,10 +1,10 @@
 // backend/controllers/AiSuggestionController.js
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Ollama from "ollama";
 import ClassTimetable from "../models/ClassTimetable.js";
 import StudentStats from "../models/StudentStats.js";
 import User from "../models/User.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const OLLAMA_MODEL = "qwen2.5:7b";
 
 const DAYS = [
   "Sunday",
@@ -51,11 +51,14 @@ function buildPrompt({ user, interests, stats, period }) {
   const interestsText = formatInterests(interests);
 
   return `
-You are an AI assistant helping a college student use their FREE period productively.
+You are an AI mentor for a college student. 
+You NEVER output extra text, only pure JSON in the required format.
 
 Student profile:
 - Name: ${user.name}
 - Class: ${user.className || "N/A"}
+- Department: ${user.department || "N/A"}
+- Year: ${user.year || "N/A"}
 - Interests: ${interestsText}
 - Attendance: ${stats.attendancePercent}% 
 - Pending assignments: ${stats.assignmentsPending}
@@ -63,16 +66,19 @@ Student profile:
 
 Current period details:
 - Period number: ${period.period}
-- Period label: ${period.subject}
+- Label: ${period.subject}
 - Time: ${period.start} - ${period.end}
 - This period is FREE.
 
-TASK:
-1. Suggest exactly ONE activity based on the student's PERSONAL INTERESTS.
-2. Suggest exactly ONE activity focused on STUDIES.
+Task:
+Help the student use this FREE period productively in a gentle, non-judgemental way.
+
+1) Suggest exactly ONE activity based on the student's PERSONAL INTERESTS.
+2) Suggest exactly ONE activity focused on STUDIES or academics.
+3) Both suggestions must be SPECIFIC and ACTIONABLE within this single period.
 
 OUTPUT FORMAT:
-Return ONLY this JSON:
+Return ONLY this JSON (no Markdown, no commentary):
 
 {
   "interest": {
@@ -80,18 +86,16 @@ Return ONLY this JSON:
     "start": "${period.start}",
     "end": "${period.end}",
     "label": "Personal Interest",
-    "suggestion": ""
+    "suggestion": "string"
   },
   "academic": {
     "period": ${period.period},
     "start": "${period.start}",
     "end": "${period.end}",
     "label": "Academic / Studies",
-    "suggestion": ""
+    "suggestion": "string"
   }
 }
-
-No markdown. No extra text. Only valid JSON.
 `;
 }
 
@@ -99,10 +103,12 @@ No markdown. No extra text. Only valid JSON.
 
 export const getAISuggestions = async (req, res) => {
   try {
-    // ---------------- USER ----------------
+    // USER
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ message: "User not found", suggestions: [] });
+      return res
+        .status(404)
+        .json({ message: "User not found", suggestions: [] });
     }
 
     if (!user.className) {
@@ -114,7 +120,7 @@ export const getAISuggestions = async (req, res) => {
 
     const todayName = getTodayName();
 
-    // ---------------- TIMETABLE ----------------
+    // TIMETABLE
     const timetable = await ClassTimetable.findOne({
       className: user.className,
       day: todayName,
@@ -136,7 +142,7 @@ export const getAISuggestions = async (req, res) => {
       });
     }
 
-    // Free period check
+    // Check if free period
     const isFree =
       current.isFreePeriod === true ||
       (current.subject && current.subject.toLowerCase().includes("free"));
@@ -148,7 +154,7 @@ export const getAISuggestions = async (req, res) => {
       });
     }
 
-    // ---------------- STATS ----------------
+    // STATS
     const statsDoc = await StudentStats.findOne({ user: user._id });
 
     const stats = {
@@ -159,7 +165,7 @@ export const getAISuggestions = async (req, res) => {
 
     const interests = user.interests || [];
 
-    // ---------------- PROMPT ----------------
+    // PROMPT
     const prompt = buildPrompt({
       user,
       interests,
@@ -167,59 +173,73 @@ export const getAISuggestions = async (req, res) => {
       period: current,
     });
 
-    // ---------------- GEMINI CALL ----------------
+    // OLLAMA CALL
     let aiText = "";
-
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const result = await model.generateContent(prompt);
-      aiText = result.response.text();
-
-      console.log("AI RAW (Gemini):", aiText);
+      const result = await Ollama.generate({
+        model: OLLAMA_MODEL,
+        prompt,
+      });
+      aiText = result.response || result.output || "";
+      console.log("AI RAW (Ollama):", aiText);
     } catch (err) {
-      console.error("Gemini API Error:", err);
+      console.error("Ollama AI Error:", err);
       aiText = "";
     }
 
-    // ---------------- JSON PARSE ----------------
+    // JSON PARSE
     let parsed;
     try {
-      parsed = JSON.parse(aiText);
+      const start = aiText.indexOf("{");
+      const end = aiText.lastIndexOf("}") + 1;
+      const jsonText =
+        start !== -1 && end !== -1 ? aiText.slice(start, end) : aiText;
+      parsed = JSON.parse(jsonText);
     } catch (e) {
       console.error("AI JSON parse error, raw text:", aiText);
+      parsed = null;
+    }
 
-      // Fallback simple suggestions
+    // FALLBACK IF AI FAILED
+    if (!parsed || !parsed.interest || !parsed.academic) {
       const fallback = [
         {
           type: "interest",
           period: current.period,
           start: current.start,
           end: current.end,
+          label: "Personal Interest",
           suggestion:
             interests.length > 0
-              ? `Use this free period to work on your interest in "${interests[0]}".`
-              : "Use this free period to explore any topic you like.",
+              ? `Use this free period to explore your interest in "${interests[0]}". For example, watch one high-quality tutorial or read a short article and take notes.`
+              : "Use this free period to explore any topic you genuinely enjoy. Take notes on at least three new things you learn.",
         },
         {
           type: "academic",
           period: current.period,
           start: current.start,
           end: current.end,
+          label: "Academic / Studies",
           suggestion:
             stats.attendancePercent < 75
-              ? "Your attendance is low. Revise missed topics."
-              : "Revise notes or complete pending assignments.",
+              ? "Your attendance is on the lower side. Use this free period to revise topics from classes you missed and list doubts to ask faculty later."
+              : "Use this free period to complete pending assignments or revise key concepts for the next exam. Write down 3 key points you want to remember.",
         },
       ];
 
       return res.json({
         message: "Fallback suggestions (AI JSON invalid).",
+        period: {
+          number: current.period,
+          subject: current.subject,
+          start: current.start,
+          end: current.end,
+        },
         suggestions: fallback,
       });
     }
 
-    // ---------------- NORMALIZE ----------------
+    // NORMALIZE
     const suggestions = [];
 
     if (parsed.interest) {
@@ -244,7 +264,7 @@ export const getAISuggestions = async (req, res) => {
       });
     }
 
-    // ---------------- RESPONSE ----------------
+    // RESPONSE
     return res.json({
       message: "Suggestions generated.",
       period: {

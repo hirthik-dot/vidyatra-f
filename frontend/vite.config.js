@@ -6,7 +6,7 @@ import mkcert from "vite-plugin-mkcert";
 export default defineConfig({
   plugins: [
     react(),
-    mkcert(), // 🔥 Enables HTTPS with local certificates
+    mkcert(), // HTTPS certificate
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
@@ -41,9 +41,17 @@ export default defineConfig({
   ],
 
   server: {
-    https: true, // 🔥 HTTPS enabled for GPS & secure geolocation
-    host: true,  // 🔥 Allows LAN/mobile devices to connect (hotspot)
+    https: true,          // We keep HTTPS for geolocation permissions
+    host: "0.0.0.0",      // Allow LAN/mobile access
     port: 5173,
+
+    // 🔥 THE MAIN FIX: Force WebSocket to use ws:// (NOT wss://)
+    hmr: {
+      protocol: "ws",      // prevent wss:// which breaks on LAN
+      host: "172.28.29.117", // your LAN IP (change when network changes)
+      port: 5173,
+    },
+
     proxy: {
       "/api": {
         target: "http://localhost:5000",

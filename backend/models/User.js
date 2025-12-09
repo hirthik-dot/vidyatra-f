@@ -4,9 +4,16 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
 
-    email: { type: String, required: true, unique: true },
+    // ⚠️ PLAIN EMAIL — legacy only (NOT required anymore)
+    email: { type: String, required: false, unique: false },
 
-    password: { type: String, required: true }, // plain text
+    // 🔐 NEW: Encrypted email
+    emailEnc: { type: String, required: false },
+
+    // 🔑 NEW: Hash for fast lookup (sha256(email))
+    emailHash: { type: String, required: false, unique: true, sparse: true },
+
+    password: { type: String, required: true },
 
     role: {
       type: String,
@@ -28,7 +35,7 @@ const userSchema = new mongoose.Schema(
     className: { type: String, default: null },
     interests: { type: [String], default: [] },
 
-    // ⭐ ADD XP SYSTEM HERE
+    // ⭐ XP SYSTEM
     totalXP: {
       type: Number,
       default: 0,
@@ -39,7 +46,7 @@ const userSchema = new mongoose.Schema(
     },
 
     faceEmbedding: {
-      type: [Number], // 512-length embedding
+      type: [Number],
       default: null,
     },
     faceRegistered: {
@@ -56,6 +63,9 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Add index to avoid duplicate hash errors on empty/null
+userSchema.index({ emailHash: 1 }, { unique: true, sparse: true });
 
 const User = mongoose.model("User", userSchema);
 export default User;

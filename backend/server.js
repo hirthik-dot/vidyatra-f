@@ -1,6 +1,10 @@
+// ======================================================
+// LOAD ENV FIRST (VERY IMPORTANT)
+// ======================================================
+import "./config/loadEnv.js";   // <-- loads .env BEFORE everything else
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -9,11 +13,9 @@ import { connectDB } from "./config/db.js";
 import facultyAttendanceRoutes from "./routes/facultyAttendance.routes.js";
 import qrRoutes from "./routes/qrRoutes.js";
 
-
-
-
-dotenv.config();
-
+// ======================================================
+// EXPRESS APP
+// ======================================================
 const app = express();
 app.set("trust proxy", true);
 
@@ -48,7 +50,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 /* ------------------------------------------------------
-   STATIC
+   STATIC FILES
 ------------------------------------------------------ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +58,7 @@ const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ------------------------------------------------------
-   ROUTES (ORDER IS VERY IMPORTANT)
+   ROUTES (ORDER IMPORTANT)
 ------------------------------------------------------ */
 
 // AUTH
@@ -67,9 +69,10 @@ app.use("/api/auth", authRoutes);
 import assignmentRoutes from "./routes/assignmentRoutes.js";
 app.use("/api", assignmentRoutes);
 
-
+// QR + FACULTY ATTENDANCE
 app.use("/api/student/qr", qrRoutes);
 app.use("/api/faculty/attendance", facultyAttendanceRoutes);
+
 // ASSESSMENTS
 import studentAssessmentRoutes from "./routes/studentAssessmentRoutes.js";
 import studentAssessmentSubmitRoutes from "./routes/studentAssessmentSubmitRoutes.js";

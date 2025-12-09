@@ -13,7 +13,8 @@ import { markStudentAttendance } from "../controllers/AttendanceController.js";
 import { getCurrentQR } from "../controllers/QrController.js";
 import { getLiveQR } from "../controllers/AttendanceController.js";
 import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
-import { checkWifiAuth } from "../controllers/WifiController.js";
+import { verifyWifiConnection } from "../controllers/AttendanceController.js";
+
 import { protect } from "../middleware/AuthMiddleware.js";
 
 
@@ -88,8 +89,9 @@ router.get(
   "/attendance/check-wifi",
   authMiddleware,
   requireRole("student"),
-  checkWifiAuth
+  verifyWifiConnection
 );
+
 
 /* ======================================================
    ⭐ NEW — GEOLOCATION VERIFICATION (Replaces Bluetooth)

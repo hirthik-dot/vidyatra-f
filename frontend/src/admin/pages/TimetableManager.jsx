@@ -21,10 +21,11 @@ export default function TimetableManager() {
 
   const [selectedClass, setSelectedClass] = useState("");
   const [periodTimes, setPeriodTimes] = useState([...DEFAULT_PERIOD_TIMES]);
-  const [grid, setGrid] = useState([]); // [{ day, periods: [{ subject, faculty, isFreePeriod, teacherAbsent, substituteFaculty }] }]
+  const [grid, setGrid] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState([]);
+
   const [fromClass, setFromClass] = useState("");
   const [toClass, setToClass] = useState("");
 
@@ -83,24 +84,20 @@ export default function TimetableManager() {
     try {
       const res = await fetch(
         `http://localhost:5000/api/admin/timetable/${selectedClass}`,
-        {
-          headers: { Authorization: "Bearer " + token },
-        }
+        { headers: { Authorization: "Bearer " + token } }
       );
 
       const data = await res.json();
 
       if (!res.ok) {
-        console.log("Load timetable failed:", data);
         setGrid(buildEmptyGrid());
         setPeriodTimes([...DEFAULT_PERIOD_TIMES]);
         return;
       }
 
-      // Build periodTimes from first day that has times
       if (data.days && data.days.length > 0) {
         const firstDay = data.days[0];
-        if (firstDay.periods && firstDay.periods.length === DEFAULT_PERIOD_TIMES.length) {
+        if (firstDay.periods?.length === DEFAULT_PERIOD_TIMES.length) {
           setPeriodTimes(
             firstDay.periods.map((p, idx) => ({
               period: idx + 1,
@@ -108,14 +105,11 @@ export default function TimetableManager() {
               end: p.end || DEFAULT_PERIOD_TIMES[idx].end,
             }))
           );
-        } else {
-          setPeriodTimes([...DEFAULT_PERIOD_TIMES]);
         }
 
-        // Build grid (subjects etc.)
         const newGrid = DAYS.map((day) => {
           const dayDoc = data.days.find((d) => d.day === day);
-          if (!dayDoc || !dayDoc.periods) {
+          if (!dayDoc)
             return {
               day,
               periods: DEFAULT_PERIOD_TIMES.map(() => ({
@@ -126,7 +120,7 @@ export default function TimetableManager() {
                 substituteFaculty: "",
               })),
             };
-          }
+
           return {
             day,
             periods: dayDoc.periods.map((p) => ({
@@ -144,12 +138,10 @@ export default function TimetableManager() {
         setGrid(newGrid);
       } else {
         setGrid(buildEmptyGrid());
-        setPeriodTimes([...DEFAULT_PERIOD_TIMES]);
       }
     } catch (err) {
       console.error("Timetable load error:", err);
       setGrid(buildEmptyGrid());
-      setPeriodTimes([...DEFAULT_PERIOD_TIMES]);
     }
   };
 
@@ -166,7 +158,6 @@ export default function TimetableManager() {
       const periods = [...row.periods];
       periods[periodIdx] = { ...periods[periodIdx], ...changes };
 
-      // If we mark free → clear faculty & absent
       if (changes.isFreePeriod) {
         periods[periodIdx].subject = "";
         periods[periodIdx].faculty = "";
@@ -189,20 +180,22 @@ export default function TimetableManager() {
     setSaving(true);
     setConflicts([]);
 
-    // Build payload
-    const daysPayload = grid.map((row, dayIdx) => ({
-      day: row.day,
-      periods: row.periods.map((cell, pIdx) => ({
-        period: periodTimes[pIdx].period,
-        start: periodTimes[pIdx].start,
-        end: periodTimes[pIdx].end,
-        subject: cell.subject || "",
-        faculty: cell.faculty || null,
-        isFreePeriod: cell.isFreePeriod,
-        teacherAbsent: cell.teacherAbsent,
-        substituteFaculty: cell.substituteFaculty || null,
+    const payload = {
+      className: selectedClass,
+      days: grid.map((row, dayIdx) => ({
+        day: row.day,
+        periods: row.periods.map((cell, pIdx) => ({
+          period: periodTimes[pIdx].period,
+          start: periodTimes[pIdx].start,
+          end: periodTimes[pIdx].end,
+          subject: cell.subject,
+          faculty: cell.faculty || null,
+          isFreePeriod: cell.isFreePeriod,
+          teacherAbsent: cell.teacherAbsent,
+          substituteFaculty: cell.substituteFaculty || null,
+        })),
       })),
-    }));
+    };
 
     try {
       const res = await fetch("http://localhost:5000/api/admin/timetable/save", {
@@ -211,16 +204,12 @@ export default function TimetableManager() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + token,
         },
-        body: JSON.stringify({
-          className: selectedClass,
-          days: daysPayload,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        console.log("Save error:", data);
         if (data.conflicts) {
           setConflicts(data.conflicts);
         } else {
@@ -262,15 +251,14 @@ export default function TimetableManager() {
       );
 
       const data = await res.json();
+
       if (!res.ok) {
-        alert(data.message || "Failed to duplicate");
+        alert(data.message || "Failed to duplicate timetable");
         return;
       }
 
       alert("Timetable duplicated!");
-      if (selectedClass === toClass) {
-        loadTimetable();
-      }
+      if (selectedClass === toClass) loadTimetable();
     } catch (err) {
       console.error("Duplicate timetable error:", err);
     }
@@ -278,19 +266,19 @@ export default function TimetableManager() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">
-        Timetable Management
-      </h2>
+      <h2 className="text-3xl font-bold text-blue-700">Timetable Management</h2>
 
-      {/* TOP: class select + load + duplicate block */}
+      {/* TOP BLOCK */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow border space-y-3">
+
+        {/* Select + Load */}
+        <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200 space-y-3">
           <p className="text-sm font-semibold text-gray-700">
             Select Class & Load Timetable
           </p>
 
           <select
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500"
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
           >
@@ -304,22 +292,22 @@ export default function TimetableManager() {
 
           <button
             onClick={loadTimetable}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition"
           >
             Load Timetable
           </button>
         </div>
 
-        {/* Duplicate section */}
-        <div className="bg-white p-4 rounded-xl shadow border space-y-3 lg:col-span-2">
+        {/* Duplicate */}
+        <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200 space-y-3 lg:col-span-2">
           <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <Copy className="w-4 h-4 text-indigo-500" />
-            Duplicate Timetable (Copy from one class to another)
+            <Copy className="w-4 h-4 text-indigo-600" />
+            Duplicate Timetable
           </p>
 
           <div className="flex flex-wrap gap-2">
             <select
-              className="border rounded-lg px-3 py-2 text-sm bg-gray-50"
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500"
               value={fromClass}
               onChange={(e) => setFromClass(e.target.value)}
             >
@@ -334,7 +322,7 @@ export default function TimetableManager() {
             <span className="self-center text-xs text-gray-500">→</span>
 
             <select
-              className="border rounded-lg px-3 py-2 text-sm bg-gray-50"
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500"
               value={toClass}
               onChange={(e) => setToClass(e.target.value)}
             >
@@ -348,32 +336,28 @@ export default function TimetableManager() {
 
             <button
               onClick={duplicate}
-              className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition"
             >
               Duplicate
             </button>
           </div>
 
           <p className="text-[11px] text-gray-500">
-            Useful when sections share same timetable. Target class timetable
-            will be replaced.
+            Useful when multiple sections share the same timetable.
           </p>
         </div>
       </div>
 
-      {/* CONFLICTS PANEL */}
+      {/* CONFLICTS */}
       {conflicts.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2 shadow">
           <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
           <div className="text-xs text-red-800 space-y-1">
-            <p className="font-semibold">
-              Timetable conflicts detected (same faculty in two classes at same
-              time):
-            </p>
+            <p className="font-semibold">Conflicts detected:</p>
             <ul className="list-disc pl-4">
               {conflicts.map((c, idx) => (
                 <li key={idx}>
-                  {c.day}, Period {c.period} • Faculty ID: {c.faculty} already in{" "}
+                  {c.day}, Period {c.period} • Faculty {c.faculty} also in{" "}
                   {c.otherClasses.join(", ")}
                 </li>
               ))}
@@ -382,29 +366,38 @@ export default function TimetableManager() {
         </div>
       )}
 
-      {/* MAIN GRID: Time-table style */}
+      {/* TIMETABLE GRID */}
       {grid.length > 0 && (
-        <div className="bg-white rounded-2xl shadow border p-4 overflow-x-auto">
-          <table className="min-w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="border p-2 text-left w-24">Day / Time</th>
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-4 overflow-x-auto">
+          <table className="min-w-full border border-slate-300 rounded-lg text-xs">
+            <thead className="bg-slate-100">
+              <tr className="border-b border-slate-300">
+                <th className="border-r border-slate-300 p-2 text-left font-semibold sticky left-0 bg-slate-100 z-20">
+                  Day / Time
+                </th>
+
                 {periodTimes.map((p, idx) => (
-                  <th key={p.period} className="border p-2 text-center min-w-[160px]">
-                    <div className="font-semibold">P{p.period}</div>
+                  <th
+                    key={p.period}
+                    className="border-r border-slate-300 p-2 text-center min-w-[170px] font-semibold"
+                  >
+                    <div>P{p.period}</div>
+
                     <div className="flex gap-1 justify-center mt-1">
                       <input
                         type="time"
-                        className="border rounded px-1 py-0.5 text-[11px]"
+                        className="border border-slate-300 rounded px-1 py-0.5 text-[11px] focus:ring-1 focus:ring-blue-500"
                         value={p.start}
                         onChange={(e) =>
                           handleHeaderTimeChange(idx, "start", e.target.value)
                         }
                       />
-                      <span className="text-[10px]">-</span>
+
+                      <span className="text-[10px]">–</span>
+
                       <input
                         type="time"
-                        className="border rounded px-1 py-0.5 text-[11px]"
+                        className="border border-slate-300 rounded px-1 py-0.5 text-[11px] focus:ring-1 focus:ring-blue-500"
                         value={p.end}
                         onChange={(e) =>
                           handleHeaderTimeChange(idx, "end", e.target.value)
@@ -418,8 +411,11 @@ export default function TimetableManager() {
 
             <tbody>
               {grid.map((row, dayIdx) => (
-                <tr key={row.day}>
-                  <td className="border p-2 font-semibold text-gray-700 bg-gray-50">
+                <tr
+                  key={row.day}
+                  className="border-b border-slate-200 odd:bg-slate-50 hover:bg-slate-100 transition"
+                >
+                  <td className="border-r border-slate-300 p-2 font-medium sticky left-0 bg-white z-10 shadow-sm">
                     {row.day}
                   </td>
 
@@ -430,18 +426,18 @@ export default function TimetableManager() {
                     return (
                       <td
                         key={periodIdx}
-                        className={`border align-top p-1 ${
+                        className={`border-r border-slate-300 p-2 align-top transition ${
                           isFree
-                            ? "bg-emerald-50"
+                            ? "bg-emerald-50 hover:bg-emerald-100"
                             : isAbsent
-                            ? "bg-amber-50"
-                            : "bg-white"
+                            ? "bg-amber-50 hover:bg-amber-100"
+                            : "bg-white hover:bg-slate-50"
                         }`}
                       >
                         <div className="space-y-1">
                           {/* Subject */}
                           <select
-                            className="w-full border rounded px-1 py-0.5 text-[11px] bg-white"
+                            className="w-full border border-slate-300 rounded px-1 py-0.5 text-[11px] bg-white focus:ring-1 focus:ring-blue-500"
                             disabled={cell.isFreePeriod}
                             value={cell.subject}
                             onChange={(e) =>
@@ -461,9 +457,9 @@ export default function TimetableManager() {
 
                           {/* Faculty */}
                           <select
-                            className="w-full border rounded px-1 py-0.5 text-[11px] bg-white"
+                            className="w-full border border-slate-300 rounded px-1 py-0.5 text-[11px] bg-white focus:ring-1 focus:ring-blue-500"
                             disabled={cell.isFreePeriod}
-                            value={cell.faculty}
+                            value={cell.facfaculty}
                             onChange={(e) =>
                               updateCell(dayIdx, periodIdx, {
                                 faculty: e.target.value,
@@ -514,7 +510,7 @@ export default function TimetableManager() {
                           {/* Substitute */}
                           {!cell.isFreePeriod && cell.teacherAbsent && (
                             <select
-                              className="w-full border rounded px-1 py-0.5 text-[11px] bg-white mt-1"
+                              className="w-full border border-slate-300 rounded px-1 py-0.5 text-[11px] bg-white mt-1 focus:ring-1 focus:ring-blue-500"
                               value={cell.substituteFaculty}
                               onChange={(e) =>
                                 updateCell(dayIdx, periodIdx, {
@@ -531,7 +527,6 @@ export default function TimetableManager() {
                             </select>
                           )}
 
-                          {/* Status label */}
                           <p className="text-[10px] text-gray-500 mt-1">
                             {isFree
                               ? "Free Period"
@@ -553,7 +548,9 @@ export default function TimetableManager() {
               onClick={saveTimetable}
               disabled={saving}
               className={`px-6 py-2 rounded-xl text-sm font-semibold text-white ${
-                saving ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
+                saving
+                  ? "bg-gray-400"
+                  : "bg-green-600 hover:bg-green-700 transition"
               }`}
             >
               {saving ? "Saving..." : "Save Timetable"}
