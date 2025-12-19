@@ -1,11 +1,11 @@
 import express from "express";
 import User from "../models/User.js";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // GET XP
-router.get("/xp", authMiddleware, async (req, res) => {
+router.get("/xp", protect, async (req, res) => {
   try {
     const user = await User.findOne({ email: req.user.email });
 

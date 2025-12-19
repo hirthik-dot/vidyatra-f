@@ -1,5 +1,5 @@
 import express from "express";
-import protect from "../middleware/AuthMiddleware.js";
+import protect from "../middleware/authMiddleware.js";
 import { generateGameQuestion } from "../controllers/gameController.js";
 
 const router = express.Router();

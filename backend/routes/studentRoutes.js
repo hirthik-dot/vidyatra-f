@@ -1,7 +1,7 @@
 // backend/routes/studentRoutes.js
 
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import protect from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
 // Controllers
@@ -15,7 +15,7 @@ import { getLiveQR } from "../controllers/AttendanceController.js";
 import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
 import { verifyWifiConnection } from "../controllers/AttendanceController.js";
 
-import { protect } from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 
 // 🔥 REPLACED BLUETOOTH CONTROLLER

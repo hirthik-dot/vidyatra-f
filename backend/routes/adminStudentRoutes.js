@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import {
   getStudents,
@@ -13,7 +13,7 @@ const router = express.Router();
 // GET all students
 router.get(
   "/students",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   getStudents
 );
@@ -21,7 +21,7 @@ router.get(
 // CREATE student
 router.post(
   "/students",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   createStudent
 );
@@ -29,7 +29,7 @@ router.post(
 // UPDATE student
 router.put(
   "/students/:id",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   updateStudent
 );
@@ -37,7 +37,7 @@ router.put(
 // DELETE student
 router.delete(
   "/students/:id",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   deleteStudent
 );

@@ -1,6 +1,6 @@
 // backend/routes/facultyRoutes.js
 import express from "express";
-import protect from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
 import {
@@ -21,7 +21,7 @@ import { getFacultyDashboard } from "../controllers/facultyDashboardController.j
 
 const router = express.Router();
 
-// Protect + Restrict to faculty
+// Protect + Restrict to faculty (this pattern is GOOD)
 const protectFaculty = [protect, requireRole("faculty")];
 
 /* ---------------------------------------------------------

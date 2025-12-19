@@ -1,6 +1,6 @@
 // backend/routes/studentAssessmentRoutes.js
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import protect from "../middleware/authMiddleware.js";
 import Assessment from "../models/Assessment.js";
 import AssessmentSubmission from "../models/AssessmentSubmission.js";
 

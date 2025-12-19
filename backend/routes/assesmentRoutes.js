@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
 import {
@@ -12,15 +12,35 @@ import {
 const router = express.Router();
 
 // Faculty
-router.get("/faculty/all", authMiddleware, requireRole("faculty"), getFacultyAssessments);
+router.get(
+  "/faculty/all",
+  protect,
+  requireRole("faculty"),
+  getFacultyAssessments
+);
 
 // Student view
-router.get("/:id", authMiddleware, requireRole("student"), getAssessmentById);
+router.get(
+  "/:id",
+  protect,
+  requireRole("student"),
+  getAssessmentById
+);
 
 // Student submit
-router.post("/submit", authMiddleware, requireRole("student"), submitAssessment);
+router.post(
+  "/submit",
+  protect,
+  requireRole("student"),
+  submitAssessment
+);
 
 // Faculty – get submissions
-router.get("/submissions/:assessmentId", authMiddleware, requireRole("faculty"), getAssessmentSubmissions);
+router.get(
+  "/submissions/:assessmentId",
+  protect,
+  requireRole("faculty"),
+  getAssessmentSubmissions
+);
 
 export default router;

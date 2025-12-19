@@ -1,10 +1,9 @@
 // backend/routes/adminRoutes.js
 import express from "express";
-import authMiddleware from "../middleware/AuthMiddleware.js";
+import { protect, protectAdmin } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import User from "../models/User.js";
 import { seedWeeklyTimetable } from "../controllers/seedTimetableController.js";
-import { protectAdmin } from "../middleware/AuthMiddleware.js";
 import { getAllStudents } from "../controllers/AdminController.js";
 import { getClassStats } from "../controllers/adminClassController.js";
 
@@ -17,41 +16,25 @@ import {
 
 import { getDashboardStats } from "../controllers/adminDashboardController.js";
 
-
-
-
-
-
-
-
-
-
 const router = express.Router();
 
-
-router.get("/faculty-list", authMiddleware, requireRole("admin"), async (req, res) => {
-  const faculty = await User.find({ role: "faculty" });
-  res.json({ faculty });
-});
+router.get(
+  "/faculty-list",
+  protect,
+  requireRole("admin"),
+  async (req, res) => {
+    const faculty = await User.find({ role: "faculty" });
+    res.json({ faculty });
+  }
+);
 
 router.get("/students", protectAdmin, getAllStudents);
 
 router.get("/seed-timetable", seedWeeklyTimetable);
-router.get(
-  "/dashboard",
-  authMiddleware,
-  requireRole("admin"),
-  async (req, res) => {
-    res.json({
-      message: "Admin dashboard data",
-      user: req.user,
-    });
-  }
-);
 
 router.get(
   "/classes",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   getClassStats
 );
@@ -59,7 +42,7 @@ router.get(
 // TIMETABLE META (faculty + subjects)
 router.get(
   "/timetable/meta",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   getTimetableMeta
 );
@@ -67,7 +50,7 @@ router.get(
 // GET weekly timetable of a class
 router.get(
   "/timetable/:className",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   getClassTimetable
 );
@@ -75,7 +58,7 @@ router.get(
 // SAVE weekly timetable of a class
 router.post(
   "/timetable/save",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   saveClassTimetable
 );
@@ -83,15 +66,17 @@ router.post(
 // DUPLICATE timetable from one class to another
 router.post(
   "/timetable/duplicate",
-  authMiddleware,
+  protect,
   requireRole("admin"),
   duplicateTimetable
 );
 
-router.get("/dashboard", authMiddleware, requireRole("admin"), getDashboardStats);
-
-
-// Example: admin can list all users later
-// router.get("/users", protect, requireRole("admin"), ...)
+// ✅ SINGLE dashboard route (fixed)
+router.get(
+  "/dashboard",
+  protect,
+  requireRole("admin"),
+  getDashboardStats
+);
 
 export default router;
