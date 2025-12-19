@@ -1,7 +1,7 @@
 // backend/routes/studentRoutes.js
 
 import express from "express";
-import protect from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
 // Controllers
@@ -15,11 +15,7 @@ import { getLiveQR } from "../controllers/AttendanceController.js";
 import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
 import { verifyWifiConnection } from "../controllers/AttendanceController.js";
 
-import { protect } from "../middleware/authMiddleware.js";
-
-
-// 🔥 REPLACED BLUETOOTH CONTROLLER
-// import { checkBluetoothAuth } from "../controllers/BluetoothController.js";
+// GEO instead of Bluetooth
 import { checkGeoAuth } from "../controllers/GeoController.js";
 
 import User from "../models/User.js";
@@ -34,14 +30,14 @@ const upload = multer();
 /* ======================================================
    STUDENT INTERESTS
 ====================================================== */
-router.post("/save-interests", authMiddleware, saveInterests);
+router.post("/save-interests", protect, saveInterests);
 
 /* ======================================================
-   STUDENT DASHBOARD (AI + Interests + Face Check Trigger)
+   STUDENT DASHBOARD
 ====================================================== */
 router.get(
   "/dashboard",
-  authMiddleware,
+  protect,
   requireRole("student"),
   getStudentDashboard
 );
@@ -51,7 +47,7 @@ router.get(
 ====================================================== */
 router.get(
   "/timetable",
-  authMiddleware,
+  protect,
   requireRole("student"),
   getTodayTimetable
 );
@@ -61,7 +57,7 @@ router.get(
 ====================================================== */
 router.get(
   "/ai-suggestions",
-  authMiddleware,
+  protect,
   requireRole("student"),
   getAISuggestions
 );
@@ -71,7 +67,7 @@ router.get(
 ====================================================== */
 router.post(
   "/attendance/mark",
-  authMiddleware,
+  protect,
   requireRole("student"),
   markStudentAttendance
 );
@@ -87,18 +83,17 @@ router.get("/qr/live", getLiveQR);
 ====================================================== */
 router.get(
   "/attendance/check-wifi",
-  authMiddleware,
+  protect,
   requireRole("student"),
   verifyWifiConnection
 );
 
-
 /* ======================================================
-   ⭐ NEW — GEOLOCATION VERIFICATION (Replaces Bluetooth)
+   GEOLOCATION VERIFICATION
 ====================================================== */
 router.post(
   "/attendance/check-geo",
-  authMiddleware,
+  protect,
   requireRole("student"),
   checkGeoAuth
 );
@@ -123,7 +118,7 @@ router.get("/", async (req, res) => {
 ====================================================== */
 router.get(
   "/personal-material",
-  authMiddleware,
+  protect,
   requireRole("student"),
   generatePersonalMaterial
 );
@@ -136,7 +131,6 @@ router.get("/all/full", async (req, res) => {
     const students = await User.find({ role: "student" }).select(
       "name regNo dept section year dob email contact cgpa performance avatar"
     );
-
     return res.status(200).json(students);
   } catch (err) {
     console.error("Error fetching student data:", err);
@@ -145,11 +139,11 @@ router.get("/all/full", async (req, res) => {
 });
 
 /* ======================================================
-   FACE REGISTRATION — FIRST TIME ONLY
+   FACE REGISTRATION
 ====================================================== */
 router.post(
   "/face/register",
-  authMiddleware,
+  protect,
   requireRole("student"),
   upload.single("image"),
   async (req, res) => {
@@ -185,19 +179,17 @@ router.post(
       });
     } catch (err) {
       console.error("Face register error:", err.response?.data || err.message);
-      return res
-        .status(500)
-        .json({ message: "Server error in face register" });
+      return res.status(500).json({ message: "Server error in face register" });
     }
   }
 );
 
 /* ======================================================
-   FACE ATTENDANCE → MATCH + AUTO MARK
+   FACE ATTENDANCE
 ====================================================== */
 router.post(
   "/attendance/face-scan",
-  authMiddleware,
+  protect,
   requireRole("student"),
   upload.single("image"),
   async (req, res) => {
@@ -233,51 +225,19 @@ router.post(
 
       req.body = {
         wifiVerified: true,
-        geoVerified: false,      // 🔥 set this if you want auto mark with geo
+        geoVerified: false,
         faceVerified: true,
         qrVerified: false,
       };
 
       return markStudentAttendance(req, res);
     } catch (err) {
-      console.error(
-        "Face attendance error:",
-        err.response?.data || err.message
-      );
+      console.error("Face attendance error:", err.response?.data || err.message);
       return res
         .status(500)
         .json({ message: "Server error in face attendance" });
     }
   }
 );
-
-router.get("/current-free-period", protect, async (req, res) => {
-  try {
-    const studentId = req.user.id;
-
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
-
-    // Use your existing timetable logic:
-    const timetable = await StudentTimetable.findOne({ studentId });
-
-    if (!timetable) {
-      return res.json({ isFree: false });
-    }
-
-    const today = now.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-    const periods = timetable[today] || [];
-
-    const freeNow = periods.find(
-      (p) => p.start <= currentTime && p.end >= currentTime && p.isFree === true
-    );
-
-    return res.json({ isFree: !!freeNow });
-  } catch (err) {
-    console.error("FREE PERIOD CHECK ERROR:", err);
-    res.status(500).json({ isFree: false });
-  }
-});
-
 
 export default router;
