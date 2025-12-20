@@ -7,7 +7,7 @@ import { requireRole } from "../middleware/roleMiddleware.js";
 // Controllers
 import { getStudentDashboard } from "../controllers/StudentController.js";
 import { getTodayTimetable } from "../controllers/StudentTimetableController.js";
-import { getAISuggestions } from "../controllers/AiSuggestionController.js";
+import { getAISuggestions } from "../controllers/aiSuggestionController.js";
 import { saveInterests } from "../controllers/studentInterestController.js";
 import { markStudentAttendance } from "../controllers/AttendanceController.js";
 import { getCurrentQR } from "../controllers/QrController.js";
