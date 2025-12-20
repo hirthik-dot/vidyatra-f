@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AssessmentSubmissions() {
   const facultyId = localStorage.getItem("facultyId");
@@ -10,75 +11,95 @@ export default function AssessmentSubmissions() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  /* ----------------------------------------------------
-      FETCH ALL ASSESSMENTS OF FACULTY
-  ---------------------------------------------------- */
+  /* =====================================================
+     LOAD ALL ASSESSMENTS OF THIS FACULTY
+  ===================================================== */
   useEffect(() => {
+    if (!facultyId || !token) return;
+
     const fetchData = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/faculty/assessments/all/${facultyId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          `${API_BASE_URL}/api/faculty/assessments/all/${facultyId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        setAssessments(res.data.assessments);
+        setAssessments(res.data?.assessments || []);
       } catch (err) {
         console.error("Error loading assessments:", err);
       }
     };
 
     fetchData();
-  }, []);
+  }, [facultyId, token]);
 
-  /* ----------------------------------------------------
-      OPEN ONE ASSESSMENT AND LOAD SUBMISSIONS
-  ---------------------------------------------------- */
+  /* =====================================================
+     OPEN ASSESSMENT → LOAD SUBMISSIONS
+  ===================================================== */
   const openAssessment = async (ass) => {
     setSelected(ass);
     setLoading(true);
 
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/faculty/assessments/${ass._id}/submissions`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/api/faculty/assessments/${ass._id}/submissions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      setSubmissions(res.data.submissions);
+      setSubmissions(res.data?.submissions || []);
     } catch (err) {
       console.error("Error loading submissions:", err);
+      setSubmissions([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  /* ----------------------------------------------------
-      SAVE MARKS FOR A SINGLE STUDENT
-  ---------------------------------------------------- */
+  /* =====================================================
+     SAVE MARKS
+  ===================================================== */
   const saveMarks = async (submissionId, detailedMarks) => {
-    const total = Object.values(detailedMarks).reduce((a, b) => a + b, 0);
-
-    await axios.post(
-      `http://localhost:5000/api/faculty/assessments/${submissionId}/grade`,
-      {
-        detailedMarks,
-        totalMarks: total,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
+    const total = Object.values(detailedMarks || {}).reduce(
+      (a, b) => a + Number(b || 0),
+      0
     );
 
-    alert("Marks Saved ✔");
+    try {
+      await axios.post(
+        `${API_BASE_URL}/api/faculty/assessments/${submissionId}/grade`,
+        {
+          detailedMarks,
+          totalMarks: total,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      alert("Marks saved successfully ✔");
+    } catch (err) {
+      console.error("Save marks error:", err);
+      alert("Failed to save marks");
+    }
   };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-
       <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 text-transparent bg-clip-text mb-6">
         Assessment Submissions
       </h1>
 
-      {/* -------------------------------------------
-            ASSESSMENT LIST
-      ------------------------------------------- */}
+      {/* ================= ASSESSMENT LIST ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {assessments.map((a) => (
           <div
@@ -95,12 +116,9 @@ export default function AssessmentSubmissions() {
         ))}
       </div>
 
-      {/* -------------------------------------------
-            SUBMISSIONS PANEL
-      ------------------------------------------- */}
+      {/* ================= SUBMISSIONS ================= */}
       {selected && (
         <div className="mt-10 p-6 bg-white rounded-2xl shadow-xl border">
-
           <h2 className="text-2xl font-bold mb-4">
             {selected.title} — Submissions
           </h2>
@@ -127,9 +145,9 @@ export default function AssessmentSubmissions() {
   );
 }
 
-/* ----------------------------------------------------
-      SUBMISSION CARD COMPONENT
----------------------------------------------------- */
+/* =====================================================
+   SUBMISSION CARD
+===================================================== */
 function SubmissionCard({ sub, assessment, saveMarks }) {
   const [marks, setMarks] = useState(sub.detailedMarks || {});
 
@@ -140,12 +158,14 @@ function SubmissionCard({ sub, assessment, saveMarks }) {
     }));
   };
 
-  const total = Object.values(marks).reduce((a, b) => a + b, 0);
+  const total = Object.values(marks || {}).reduce(
+    (a, b) => a + Number(b || 0),
+    0
+  );
 
   return (
     <div className="border p-4 rounded-xl shadow bg-gray-50">
-
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex justify-between">
         <h3 className="font-semibold">
           {sub.studentId?.name} ({sub.studentId?.className})
@@ -155,19 +175,23 @@ function SubmissionCard({ sub, assessment, saveMarks }) {
         </span>
       </div>
 
-      {/* Answers */}
+      {/* ANSWERS */}
       <div className="mt-4 space-y-4">
         {assessment.questions.map((q, i) => {
-          const answerObj = sub.answers.find(a => a.questionId === q._id);
-const studentAnswer = answerObj ? answerObj.answer : "";
+          const answerObj = sub.answers?.find(
+            (a) => a.questionId === q._id
+          );
+          const studentAnswer = answerObj?.answer ?? "";
 
           return (
-            <div key={q.id || q._id} className="p-3 bg-white rounded-lg border">
+            <div
+              key={q._id || q.id}
+              className="p-3 bg-white rounded-lg border"
+            >
               <p className="font-medium">
                 {i + 1}. {q.text}
               </p>
 
-              {/* MCQ */}
               {q.type === "mcq" ? (
                 <p
                   className={
@@ -176,31 +200,34 @@ const studentAnswer = answerObj ? answerObj.answer : "";
                       : "text-red-600 font-semibold"
                   }
                 >
-                  Answer: {q.options[studentAnswer] || "Not answered"}
+                  Answer: {q.options?.[studentAnswer] || "Not answered"}
                 </p>
               ) : (
-                <p className="text-gray-700">Answer: {studentAnswer}</p>
+                <p className="text-gray-700">
+                  Answer: {studentAnswer || "Not answered"}
+                </p>
               )}
 
-              {/* MARKS INPUT */}
+              {/* MARK INPUT */}
               <div className="flex items-center mt-2">
                 <input
                   type="number"
                   className="border px-2 py-1 rounded w-24"
-                  placeholder="Marks"
-                  value={marks[q._id] || marks[q.id] || ""}
+                  value={marks[q._id] || ""}
                   onChange={(e) =>
-                    updateMark(q._id || q.id, e.target.value)
+                    updateMark(q._id, e.target.value)
                   }
                 />
-                <span className="text-xs ml-2 text-gray-500">/ {q.marks}</span>
+                <span className="text-xs ml-2 text-gray-500">
+                  / {q.marks}
+                </span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Save Button */}
+      {/* SAVE */}
       <div className="mt-4 flex justify-between items-center">
         <p className="font-semibold">Total: {total} marks</p>
 

@@ -8,6 +8,7 @@ import {
   Lightbulb,
   GraduationCap,
 } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function Schedule() {
   const [periods, setPeriods] = useState([]);
@@ -23,11 +24,12 @@ export default function Schedule() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    fetch("http://localhost:5000/api/student/timetable", {
+    fetch(`${API_BASE_URL}/api/student/timetable`, {
       headers: { Authorization: "Bearer " + token },
     })
       .then((res) => res.json())
-      .then((data) => setPeriods(data.periods || []));
+      .then((data) => setPeriods(data.periods || []))
+      .catch((err) => console.error("Timetable load error:", err));
   }, []);
 
   const getCurrentPeriod = () => {
@@ -50,8 +52,12 @@ export default function Schedule() {
     <div className="space-y-10">
       {/* HEADING */}
       <div>
-        <h2 className="text-4xl font-extrabold text-blue-700">Today's Timetable</h2>
-        <p className="text-gray-600 mt-1">Track your classes and stay prepared.</p>
+        <h2 className="text-4xl font-extrabold text-blue-700">
+          Today's Timetable
+        </h2>
+        <p className="text-gray-600 mt-1">
+          Track your classes and stay prepared.
+        </p>
       </div>
 
       {/* MAIN TIMETABLE CARD */}
@@ -79,20 +85,30 @@ export default function Schedule() {
                     ? "bg-blue-50 border border-blue-300"
                     : "bg-green-50 border border-green-300"
                 }
-                ${isCurrent ? "scale-[1.03] shadow-lg border-blue-500" : "shadow-sm"}
+                ${
+                  isCurrent
+                    ? "scale-[1.03] shadow-lg border-blue-500"
+                    : "shadow-sm"
+                }
                 hover:shadow-xl hover:scale-[1.02]
               `}
             >
               {/* TIME */}
               <div className="col-span-2 text-center">
-                <p className="font-bold">{p.start} – {p.end}</p>
+                <p className="font-bold">
+                  {p.start} – {p.end}
+                </p>
                 <p className="text-xs text-gray-500">Period {idx + 1}</p>
               </div>
 
               {/* SUBJECT */}
               <div className="col-span-3 flex items-center gap-2">
-                {subjectIcons[p.subject] || <BookOpen className="w-6 h-6 text-gray-600" />}
-                <p className="text-lg font-semibold text-blue-800">{p.subject}</p>
+                {subjectIcons[p.subject] || (
+                  <BookOpen className="w-6 h-6 text-gray-600" />
+                )}
+                <p className="text-lg font-semibold text-blue-800">
+                  {p.subject}
+                </p>
               </div>
 
               {/* FACULTY */}
@@ -109,44 +125,48 @@ export default function Schedule() {
                   </p>
                 )}
 
-                {/* Faculty Hover Card */}
+                {/* Hover Card */}
                 {!p.isFreePeriod && (
                   <div className="absolute hidden group-hover:block left-0 top-8 bg-white p-3 shadow-xl rounded-lg border w-48 z-10">
                     <p className="font-bold text-blue-700">{p.facultyName}</p>
-                    <p className="text-xs text-gray-500">Faculty of {p.subject}</p>
-                    <p className="text-xs text-gray-400 mt-1">{p.start} – {p.end}</p>
+                    <p className="text-xs text-gray-500">
+                      Faculty of {p.subject}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {p.start} – {p.end}
+                    </p>
                   </div>
                 )}
               </div>
 
-              {/* STATUS BADGE */}
-              <div className="col-span-2 flex items-center justify-center">
+              {/* STATUS */}
+              <div className="col-span-2 flex justify-center">
                 {p.isFreePeriod ? (
-                  <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700">
+                  <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm">
                     Free Period
                   </span>
                 ) : p.substituteFaculty ? (
-                  <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
+                  <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm">
                     Substitute
                   </span>
                 ) : (
-                  <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">
+                  <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm">
                     Active
                   </span>
                 )}
               </div>
 
-              {/* ACTIONS */}
-              <div className="col-span-2 flex items-center justify-center">
+              {/* ACTION */}
+              <div className="col-span-2 flex justify-center">
                 {p.isFreePeriod ? (
                   <button
                     onClick={() => navigate("/student/ai")}
-                    className="text-sm text-blue-700 font-semibold underline flex items-center gap-1 hover:text-blue-900"
+                    className="text-blue-700 underline flex items-center gap-1 text-sm"
                   >
                     <Sparkles className="w-4 h-4" /> AI Suggestion
                   </button>
                 ) : (
-                  <p className="text-sm text-gray-400">—</p>
+                  <span className="text-gray-400">—</span>
                 )}
               </div>
             </div>
@@ -155,33 +175,30 @@ export default function Schedule() {
       </div>
 
       {/* TIMELINE VIEW */}
-      <div className="mt-12">
+      <div>
         <h3 className="text-2xl font-bold text-blue-700 mb-4">Timeline View</h3>
 
         <div className="relative border-l-4 border-blue-300 pl-6">
           {periods.map((p, idx) => (
             <div key={idx} className="mb-10 relative">
-              {/* Dot */}
               <span className="absolute -left-3 top-1 w-5 h-5 bg-blue-600 rounded-full border-4 border-white shadow"></span>
 
-              {/* Card */}
-              <div className="bg-white shadow-md border rounded-xl p-4 w-full hover:shadow-xl transition">
-                <p className="text-xs text-gray-500 pb-1">Period {idx + 1}</p>
-                <p className="font-semibold text-gray-800">
-                  {p.start} – {p.end}
-                </p>
-                <p className="text-lg font-bold text-blue-700 flex items-center gap-2 mt-1">
+              <div className="bg-white shadow-md border rounded-xl p-4">
+                <p className="text-xs text-gray-500">Period {idx + 1}</p>
+                <p className="font-semibold">{p.start} – {p.end}</p>
+
+                <p className="text-lg font-bold text-blue-700 flex gap-2 mt-1">
                   {subjectIcons[p.subject]} {p.subject}
                 </p>
 
                 {p.isFreePeriod ? (
-                  <p className="text-red-600 font-medium mt-1">🔴 Free Period</p>
+                  <p className="text-red-600 mt-1">🔴 Free Period</p>
                 ) : p.substituteFaculty ? (
-                  <p className="text-blue-700 font-medium mt-1">
+                  <p className="text-blue-700 mt-1">
                     🔵 Substitute: {p.facultyName}
                   </p>
                 ) : (
-                  <p className="text-green-700 font-medium mt-1">
+                  <p className="text-green-700 mt-1">
                     🟢 Faculty: {p.facultyName}
                   </p>
                 )}
@@ -189,9 +206,9 @@ export default function Schedule() {
                 {p.isFreePeriod && (
                   <button
                     onClick={() => navigate("/student/ai")}
-                    className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg flex items-center gap-1 text-sm"
+                    className="mt-3 bg-blue-600 text-white px-3 py-1 rounded-lg flex items-center gap-1 text-sm"
                   >
-                    <Sparkles className="w-4 h-4" /> Get AI Study Suggestion
+                    <Sparkles className="w-4 h-4" /> Get AI Suggestion
                   </button>
                 )}
               </div>

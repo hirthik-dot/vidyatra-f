@@ -2,7 +2,9 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 
 // ICONS
-import { CalendarDays, FileDown, Clock } from "lucide-react";
+import { CalendarDays, FileDown } from "lucide-react";
+
+import { API_BASE_URL } from "../../config/api";
 
 export default function StudentAssignments() {
   const [assignments, setAssignments] = useState([]);
@@ -18,28 +20,34 @@ export default function StudentAssignments() {
     const fetchData = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/student/assignments/${studentId}`
+          `${API_BASE_URL}/api/student/assignments/${studentId}`
         );
 
         const assignmentsData = res.data || [];
         setAssignments(assignmentsData);
 
-        // Fetch faculty details for subject lookup
+        // Fetch faculty subject mapping
         const facultyIds = [
-          ...new Set(assignmentsData.map((a) => a.facultyId)),
+          ...new Set(assignmentsData.map((a) => a.facultyId).filter(Boolean)),
         ];
 
         const map = {};
-        for (let fId of facultyIds) {
-          if (!fId) continue;
-          const fRes = await axios.get(
-            `http://localhost:5000/api/faculty/profile/${fId}`
-          );
-          map[fId] = fRes.data.subject;
-        }
+        await Promise.all(
+          facultyIds.map(async (fId) => {
+            try {
+              const fRes = await axios.get(
+                `${API_BASE_URL}/api/faculty/profile/${fId}`
+              );
+              map[fId] = fRes.data?.subject || "General";
+            } catch {
+              map[fId] = "General";
+            }
+          })
+        );
+
         setFacultyMap(map);
       } catch (err) {
-        console.error(err);
+        console.error("Student assignments load error:", err);
       } finally {
         setLoading(false);
       }
@@ -48,16 +56,21 @@ export default function StudentAssignments() {
     fetchData();
   }, [studentId]);
 
-  if (loading)
-    return <div className="p-4 text-lg text-gray-600">Loading assignments...</div>;
+  if (loading) {
+    return (
+      <div className="p-4 text-lg text-gray-600">
+        Loading assignments...
+      </div>
+    );
+  }
 
   // ------------------------------
-  // Calculate Priority
+  // Priority calculation
   // ------------------------------
   const getPriority = (dueDate) => {
     const now = new Date();
     const due = new Date(dueDate);
-    const diff = (due - now) / (1000 * 60 * 60 * 24); // days left
+    const diff = (due - now) / (1000 * 60 * 60 * 24);
 
     if (diff <= 2) return { level: "High", color: "red" };
     if (diff <= 6) return { level: "Medium", color: "orange" };
@@ -65,7 +78,7 @@ export default function StudentAssignments() {
   };
 
   // ------------------------------
-  // Calculate Meter Percentage
+  // Progress calculation
   // ------------------------------
   const getProgress = (createdAt, dueDate) => {
     const start = new Date(createdAt);
@@ -75,13 +88,12 @@ export default function StudentAssignments() {
     const total = end - start;
     const elapsed = now - start;
 
-    let pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-    return pct;
+    return Math.min(100, Math.max(0, (elapsed / total) * 100));
   };
 
   return (
     <div className="p-6 space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <h2 className="text-3xl font-bold text-blue-700">📘 Assignments</h2>
       <p className="text-gray-600 -mt-2">
         Track deadlines, priority, and download assignment instructions easily.
@@ -101,18 +113,24 @@ export default function StudentAssignments() {
           return (
             <div
               key={a._id}
-              className="bg-white p-5 rounded-2xl shadow-md border border-gray-200 hover:shadow-xl transition-all"
+              className="bg-white p-5 rounded-2xl shadow-md border border-gray-200 hover:shadow-xl transition"
             >
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-800">{a.title}</h3>
                 <span
-                  className={`px-3 py-1 text-sm text-white rounded-full bg-${priority.color}-600`}
+                  className={`px-3 py-1 text-sm text-white rounded-full ${
+                    priority.level === "High"
+                      ? "bg-red-600"
+                      : priority.level === "Medium"
+                      ? "bg-orange-500"
+                      : "bg-green-600"
+                  }`}
                 >
                   {priority.level} Priority
                 </span>
               </div>
 
-              {/* Subject Tag */}
+              {/* Subject */}
               <div className="mt-2 inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
                 {subject}
               </div>
@@ -129,7 +147,7 @@ export default function StudentAssignments() {
                 </p>
               )}
 
-              {/* Due Date */}
+              {/* Due date */}
               <div className="flex items-center gap-2 mt-4 text-gray-700">
                 <CalendarDays size={18} />
                 <span className="font-medium">
@@ -137,7 +155,7 @@ export default function StudentAssignments() {
                 </span>
               </div>
 
-              {/* PROGRESS METER */}
+              {/* Progress */}
               <div className="mt-4 flex items-center gap-4">
                 <div className="relative w-16 h-16">
                   <svg className="w-full h-full">
@@ -178,22 +196,21 @@ export default function StudentAssignments() {
                 <div>
                   <p className="text-sm text-gray-500">Time Progress</p>
                   <p className="font-semibold text-gray-800">
-                    {progress < 100
-                      ? "Keep going!"
-                      : "Due date reached"}
+                    {progress < 100 ? "Keep going!" : "Due date reached"}
                   </p>
                 </div>
               </div>
 
-              {/* FILE DOWNLOAD */}
+              {/* Download */}
               {a.fileUrl && (
                 <a
-                  href={`http://localhost:5000${a.fileUrl}`}
+                  href={`${API_BASE_URL}${a.fileUrl}`}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-4 flex items-center gap-2 text-blue-700 hover:text-blue-900 font-semibold"
                 >
-                  <FileDown size={18} /> Download Attachment
+                  <FileDown size={18} />
+                  Download Attachment
                 </a>
               )}
             </div>

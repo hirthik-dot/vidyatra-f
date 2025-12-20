@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode.react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function LiveQR() {
   const [qrCode, setQrCode] = useState("");
@@ -7,15 +8,22 @@ export default function LiveQR() {
 
   useEffect(() => {
     const fetchQR = async () => {
-      const res = await fetch("http://localhost:5000/api/student/qr/current");
-      const data = await res.json();
-      setQrCode(data.qrCode);
-      setExpiresIn(data.expiresIn);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/student/qr/current`);
+        const data = await res.json();
+
+        if (res.ok) {
+          setQrCode(data.qrCode || "");
+          setExpiresIn(data.expiresIn ?? 30);
+        }
+      } catch (err) {
+        console.error("QR fetch error:", err);
+      }
     };
 
     fetchQR();
 
-    const interval = setInterval(fetchQR, 1000); // update countdown + auto refresh
+    const interval = setInterval(fetchQR, 1000); // auto refresh
     return () => clearInterval(interval);
   }, []);
 
@@ -25,7 +33,7 @@ export default function LiveQR() {
         Classroom QR (Auto Refresh)
       </h1>
 
-      <QRCode value={qrCode} size={220} />
+      <QRCode value={qrCode || "loading"} size={220} />
 
       <p className="text-gray-700 mt-4">
         Refreshing in: <strong>{expiresIn}s</strong>

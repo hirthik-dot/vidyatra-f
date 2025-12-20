@@ -52,16 +52,13 @@ export default function FaceRegistrationModal({ open, onClose }) {
         const formData = new FormData();
         formData.append("image", blob, "face.jpg");
 
-        const res = await fetch(
-          "http://localhost:5000/api/student/face/register",
-          {
-            method: "POST",
-            headers: {
-              Authorization: "Bearer " + token,
-            },
-            body: formData, // DO NOT set Content-Type manually
-          }
-        );
+        const res = await fetch("${API_BASE_URL}/api/student/face/register", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+          body: formData, // DO NOT set Content-Type manually
+        });
 
         const data = await res.json();
 

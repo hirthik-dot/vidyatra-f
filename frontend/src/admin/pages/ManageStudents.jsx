@@ -1,6 +1,7 @@
 // src/admin/pages/ManageStudents.jsx
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil, X, RefreshCw, Search } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function ManageStudents() {
   const [students, setStudents] = useState([]);
@@ -13,14 +14,7 @@ export default function ManageStudents() {
 
   const departments = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT"];
   const years = [1, 2, 3, 4];
-  const classOptions = [
-    "CSE-A",
-    "CSE-B",
-    "CSE-C",
-    "ECE-A",
-    "EEE-A",
-    "MECH-A",
-  ]; // you can customize
+  const classOptions = ["CSE-A", "CSE-B", "CSE-C", "ECE-A", "EEE-A", "MECH-A"];
 
   const [form, setForm] = useState({
     name: "",
@@ -31,11 +25,13 @@ export default function ManageStudents() {
     className: "",
   });
 
+  /* ================= LOAD STUDENTS ================= */
   const loadStudents = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/students", {
+      const res = await fetch(`${API_BASE_URL}/api/admin/students`, {
         headers: { Authorization: "Bearer " + token },
       });
+
       const data = await res.json();
       if (res.ok) setStudents(data.students || []);
     } catch (err) {
@@ -47,8 +43,9 @@ export default function ManageStudents() {
 
   useEffect(() => {
     loadStudents();
-  }, []);
+  }, [token]);
 
+  /* ================= MODAL HANDLERS ================= */
   const openAddModal = () => {
     setIsEdit(false);
     setForm({
@@ -81,6 +78,7 @@ export default function ManageStudents() {
     setForm((f) => ({ ...f, password: generated }));
   };
 
+  /* ================= SAVE STUDENT ================= */
   const saveStudent = async () => {
     if (!form.name || !form.email || (!isEdit && !form.password)) {
       alert("Name, email and password are required.");
@@ -94,12 +92,12 @@ export default function ManageStudents() {
 
     const method = isEdit ? "PUT" : "POST";
     const url = isEdit
-      ? `http://localhost:5000/api/admin/students/${form.id}`
-      : "http://localhost:5000/api/admin/students";
+      ? `${API_BASE_URL}/api/admin/students/${form.id}`
+      : `${API_BASE_URL}/api/admin/students`;
 
     const payload = {
       ...form,
-      year: form.year ? Number(form.year) : null,
+      year: Number(form.year),
     };
 
     try {
@@ -116,18 +114,19 @@ export default function ManageStudents() {
         setShowModal(false);
         loadStudents();
       } else {
-        console.log("Save student failed");
+        console.error("Save student failed");
       }
     } catch (err) {
       console.error("Save student error:", err);
     }
   };
 
+  /* ================= DELETE STUDENT ================= */
   const deleteStudent = async (id) => {
     if (!window.confirm("Delete this student?")) return;
 
     try {
-      await fetch(`http://localhost:5000/api/admin/students/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + token },
       });
@@ -139,8 +138,8 @@ export default function ManageStudents() {
 
   const filtered = students.filter(
     (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase()) ||
+      s.name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.email?.toLowerCase().includes(search.toLowerCase()) ||
       (s.className || "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -255,7 +254,6 @@ export default function ManageStudents() {
                 }
               />
 
-              {/* PASSWORD + AUTO */}
               <div className="flex gap-2">
                 <input
                   className="flex-1 border rounded-lg px-3 py-2 text-sm"
@@ -276,7 +274,6 @@ export default function ManageStudents() {
                 )}
               </div>
 
-              {/* DEPARTMENT */}
               <select
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
                 value={form.department}
@@ -292,7 +289,6 @@ export default function ManageStudents() {
                 ))}
               </select>
 
-              {/* YEAR */}
               <select
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
                 value={form.year}
@@ -308,7 +304,6 @@ export default function ManageStudents() {
                 ))}
               </select>
 
-              {/* CLASS NAME */}
               <select
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
                 value={form.className}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
 import QuizModal from "../components/QuizModal";
+import { API_BASE_URL } from "../../config/api";
 
 export default function StudyMaterial() {
   const [loading, setLoading] = useState(true);
@@ -18,16 +19,18 @@ export default function StudyMaterial() {
   const loadMaterial = async () => {
     try {
       setLoading(true);
+
       const res = await fetch(
-        "http://localhost:5000/api/student/personal-material",
+        `${API_BASE_URL}/api/student/personal-material`,
         {
           headers: { Authorization: "Bearer " + token },
         }
       );
+
       const data = await res.json();
 
       setMaterial(data.material || "");
-      setQuiz(data.quiz || []);
+      setQuiz(Array.isArray(data.quiz) ? data.quiz : []);
     } catch (err) {
       console.error("Study material load error:", err);
     } finally {
@@ -50,7 +53,7 @@ export default function StudyMaterial() {
         </div>
       </div>
 
-      {/* LOADING SKELETON (LinkedIn style) */}
+      {/* LOADING SKELETON */}
       {loading && (
         <div className="bg-white rounded-2xl shadow border p-6 space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -63,7 +66,7 @@ export default function StudyMaterial() {
         </div>
       )}
 
-      {/* MATERIAL + QUIZ BUTTON */}
+      {/* MATERIAL + ACTIONS */}
       {!loading && (
         <div className="bg-white rounded-2xl shadow border p-6 space-y-4">
           {material ? (
@@ -101,10 +104,7 @@ export default function StudyMaterial() {
 
       {/* QUIZ MODAL */}
       {showQuiz && (
-        <QuizModal
-          quiz={quiz}
-          onClose={() => setShowQuiz(false)}
-        />
+        <QuizModal quiz={quiz} onClose={() => setShowQuiz(false)} />
       )}
     </div>
   );

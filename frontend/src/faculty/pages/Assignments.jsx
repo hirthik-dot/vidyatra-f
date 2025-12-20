@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../../config/api";
 
 /* ---------------- MODAL COMPONENT ---------------- */
 function CreateAssignmentModal({ isOpen, onClose, refresh }) {
@@ -16,6 +17,7 @@ function CreateAssignmentModal({ isOpen, onClose, refresh }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       setSubmitting(true);
 
@@ -29,16 +31,20 @@ function CreateAssignmentModal({ isOpen, onClose, refresh }) {
       if (file) formData.append("file", file);
 
       await axios.post(
-        "http://localhost:5000/api/faculty/assignments/create",
+        `${API_BASE_URL}/api/faculty/assignments/create`,
         formData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      alert("Assignment created!");
+      alert("Assignment created successfully ✔");
       refresh();
       onClose();
     } catch (err) {
-      console.error(err);
+      console.error("Create assignment error:", err);
       alert("Failed to create assignment");
     } finally {
       setSubmitting(false);
@@ -123,7 +129,7 @@ function CreateAssignmentModal({ isOpen, onClose, refresh }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700"
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60"
           >
             {submitting ? "Creating..." : "Create Assignment"}
           </button>
@@ -137,20 +143,26 @@ function CreateAssignmentModal({ isOpen, onClose, refresh }) {
 export default function Assignments() {
   const [openModal, setOpenModal] = useState(false);
   const [assignments, setAssignments] = useState([]);
+
   const token = localStorage.getItem("token");
   const facultyId = localStorage.getItem("facultyId");
 
-  async function fetchAssignments() {
+  const fetchAssignments = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/faculty/assignments/all/${facultyId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/api/faculty/assignments/all/${facultyId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      setAssignments(res.data.assignments || []);
+
+      setAssignments(res.data?.assignments || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch assignments error:", err);
     }
-  }
+  };
 
   useEffect(() => {
     fetchAssignments();
@@ -158,7 +170,6 @@ export default function Assignments() {
 
   return (
     <div className="p-4">
-
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Assignments</h2>
@@ -177,11 +188,15 @@ export default function Assignments() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {assignments.map((a) => (
-            <div key={a._id} className="p-4 bg-white rounded-xl border shadow">
+            <div
+              key={a._id}
+              className="p-4 bg-white rounded-xl border shadow"
+            >
               <h3 className="font-semibold">{a.title}</h3>
               <p className="text-sm text-gray-500">{a.className}</p>
               <p className="text-xs mt-1">
-                Due: <b>{new Date(a.dueDate).toLocaleDateString()}</b>
+                Due:{" "}
+                <b>{new Date(a.dueDate).toLocaleDateString()}</b>
               </p>
             </div>
           ))}

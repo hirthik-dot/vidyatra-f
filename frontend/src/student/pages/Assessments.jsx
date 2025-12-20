@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Clock, CheckCircle, FileQuestion } from "lucide-react";
 
+import { API_BASE_URL } from "../../config/api";
+
 export default function StudentAssessments() {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,16 +15,18 @@ export default function StudentAssessments() {
 
   const navigate = useNavigate();
 
-  async function load() {
+  const load = async () => {
     try {
-     const res = await axios.get(
-  `http://localhost:5000/api/student-assessments/${studentId}`,
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+      const res = await axios.get(
+        `${API_BASE_URL}/api/student-assessments/${studentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-
-
-      // Sort pending → completed
+      // Sort: pending first → completed later
       const sorted = res.data.sort(
         (a, b) => Number(a.submitted) - Number(b.submitted)
       );
@@ -33,22 +37,22 @@ export default function StudentAssessments() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     load();
   }, []);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="p-10 text-center text-gray-600 text-lg">
         Loading assessments...
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-br from-blue-100 to-indigo-200">
-
       {/* Heading */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-indigo-900 drop-shadow-lg">
@@ -59,7 +63,7 @@ export default function StudentAssessments() {
         </p>
       </div>
 
-      {/* Cards */}
+      {/* Assessment Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
         {assessments.map((a, index) => (
           <motion.div
@@ -67,8 +71,12 @@ export default function StudentAssessments() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className={`rounded-2xl shadow-xl p-6 border backdrop-blur-lg transition hover:shadow-2xl cursor-pointer 
-              ${a.submitted ? "bg-white/70 border-green-200" : "bg-white/90 border-indigo-200"}`}
+            className={`rounded-2xl shadow-xl p-6 border backdrop-blur-lg transition hover:shadow-2xl cursor-pointer
+              ${
+                a.submitted
+                  ? "bg-white/70 border-green-200"
+                  : "bg-white/90 border-indigo-200"
+              }`}
           >
             {/* Title */}
             <h3 className="text-2xl font-semibold text-gray-800 mb-1">
@@ -98,7 +106,7 @@ export default function StudentAssessments() {
               )}
             </div>
 
-            {/* Button */}
+            {/* Action Button */}
             <div className="mt-6 flex justify-end">
               {a.submitted ? (
                 <button
@@ -107,16 +115,16 @@ export default function StudentAssessments() {
                   }
                   className="px-4 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700 flex items-center gap-2"
                 >
-                  <CheckCircle size={18} /> View Submission
+                  <CheckCircle size={18} />
+                  View Submission
                 </button>
               ) : (
                 <button
-                  onClick={() =>
-                    navigate(`/student/assessment/${a._id}`)
-                  }
+                  onClick={() => navigate(`/student/assessment/${a._id}`)}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-xl shadow hover:bg-indigo-700 flex items-center gap-2"
                 >
-                  <FileQuestion size={18} /> Attempt Now
+                  <FileQuestion size={18} />
+                  Attempt Now
                 </button>
               )}
             </div>

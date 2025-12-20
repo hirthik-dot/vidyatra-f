@@ -1,9 +1,19 @@
-// AUTO-DETECT BACKEND BASE URL
-let HOST = window.location.hostname;
+// src/config/api.js
 
-// If running on localhost (Vite dev mode)
-if (HOST === "localhost" || HOST === "127.0.0.1") {
-  HOST = "10.155.237.59"; // fallback to your laptop IP
-}
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://vidyatra-f-1-4obq.onrender.com";
 
-export const API_BASE = `http://${HOST}:5000`;
+// Helper for fetch
+export const apiFetch = (path, options = {}) => {
+  const token = localStorage.getItem("token");
+
+  return fetch(`${API_BASE_URL}/api${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+  });
+};

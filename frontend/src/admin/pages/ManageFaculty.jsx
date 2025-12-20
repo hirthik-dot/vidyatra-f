@@ -23,7 +23,7 @@ export default function ManageFaculty() {
     "Software Engineering",
     "Maths",
     "Physics",
-    "English"
+    "English",
   ];
 
   const [form, setForm] = useState({
@@ -37,7 +37,7 @@ export default function ManageFaculty() {
 
   const loadFaculty = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/faculty", {
+      const res = await fetch("${API_BASE_URL}/api/admin/faculty", {
         headers: { Authorization: "Bearer " + token },
       });
 
@@ -52,7 +52,7 @@ export default function ManageFaculty() {
 
   const loadClasses = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/classes", {
+      const res = await fetch("${API_BASE_URL}/api/admin/classes", {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
@@ -75,7 +75,7 @@ export default function ManageFaculty() {
       password: "",
       department: "",
       className: "",
-      subject: "",     // ✅ FIXED — earlier missing
+      subject: "", // ✅ FIXED — earlier missing
     });
     setShowModal(true);
   };
@@ -112,8 +112,8 @@ export default function ManageFaculty() {
 
     const method = isEdit ? "PUT" : "POST";
     const url = isEdit
-      ? `http://localhost:5000/api/admin/faculty/${form.id}`
-      : "http://localhost:5000/api/admin/faculty";
+      ? `${API_BASE_URL}/api/admin/faculty/${form.id}`
+      : "${API_BASE_URL}/api/admin/faculty";
 
     try {
       const res = await fetch(url, {
@@ -138,7 +138,7 @@ export default function ManageFaculty() {
     if (!window.confirm("Delete this faculty?")) return;
 
     try {
-      await fetch(`http://localhost:5000/api/admin/faculty/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/faculty/${id}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + token },
       });

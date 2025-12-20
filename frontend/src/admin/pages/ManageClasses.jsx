@@ -1,4 +1,3 @@
-// src/admin/pages/ManageClasses.jsx or AdminClasses.jsx
 import { useEffect, useState } from "react";
 import {
   Users,
@@ -7,6 +6,7 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AdminClasses() {
   const [classes, setClasses] = useState([]);
@@ -19,15 +19,18 @@ export default function AdminClasses() {
   useEffect(() => {
     const loadClasses = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/classes", {
-          headers: { Authorization: "Bearer " + token },
+        const res = await fetch(`${API_BASE_URL}/api/admin/classes`, {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
         });
 
         const data = await res.json();
+
         if (res.ok) {
           setClasses(data.classes || []);
         } else {
-          console.error("Failed to load classes", data);
+          console.error("Failed to load classes:", data);
         }
       } catch (err) {
         console.error("Class load error:", err);
@@ -37,14 +40,14 @@ export default function AdminClasses() {
     };
 
     loadClasses();
-  }, []);
+  }, [token]);
 
   const toggleExpand = (className) => {
     setExpanded((prev) => (prev === className ? null : className));
   };
 
   const filtered = classes.filter((c) =>
-    c.className.toLowerCase().includes(search.toLowerCase())
+    c.className?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -62,7 +65,7 @@ export default function AdminClasses() {
         </div>
       </div>
 
-      {/* SEARCH & SUMMARY CARD */}
+      {/* SEARCH & SUMMARY */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Search */}
         <div className="lg:col-span-2">
@@ -78,7 +81,7 @@ export default function AdminClasses() {
           </div>
         </div>
 
-        {/* Quick stats */}
+        {/* Stats */}
         <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500 uppercase">Total Classes</p>
@@ -95,13 +98,15 @@ export default function AdminClasses() {
         </div>
       </div>
 
-      {/* CLASS LIST WITH DROPDOWN */}
+      {/* CLASS LIST */}
       <div className="bg-white p-4 rounded-2xl shadow border">
         {loading ? (
-          <p className="text-center py-6 text-gray-500">Loading classes…</p>
+          <p className="text-center py-6 text-gray-500">
+            Loading classes…
+          </p>
         ) : filtered.length === 0 ? (
           <p className="text-center py-6 text-gray-500">
-            No classes found. Add students to see classes here.
+            No classes found.
           </p>
         ) : (
           <div className="space-y-3">
@@ -110,7 +115,7 @@ export default function AdminClasses() {
                 key={c._id}
                 className="border rounded-2xl p-3 hover:bg-slate-50 transition"
               >
-                {/* Header row */}
+                {/* Header */}
                 <button
                   onClick={() => toggleExpand(c.className)}
                   className="w-full flex items-center justify-between gap-3"
@@ -124,7 +129,8 @@ export default function AdminClasses() {
                         {c.className}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {c.strength} student{c.strength !== 1 ? "s" : ""}
+                        {c.strength} student
+                        {c.strength !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -141,10 +147,10 @@ export default function AdminClasses() {
                   </div>
                 </button>
 
-                {/* Expanded: student list */}
-                {expanded === c.className && c.students && (
+                {/* Expanded */}
+                {expanded === c.className && (
                   <div className="mt-3 border-t pt-3 max-h-64 overflow-y-auto">
-                    {c.students.length === 0 ? (
+                    {c.students?.length === 0 ? (
                       <p className="text-xs text-gray-500">
                         No students in this class yet.
                       </p>
@@ -159,7 +165,7 @@ export default function AdminClasses() {
                           </tr>
                         </thead>
                         <tbody>
-                          {c.students.map((s) => (
+                          {c.students?.map((s) => (
                             <tr
                               key={s._id}
                               className="border-b last:border-0 hover:bg-white"

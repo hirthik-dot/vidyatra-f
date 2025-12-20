@@ -73,12 +73,12 @@ export default function FacultyProfile() {
     if (!text) return "";
 
     return text
-      .replace(/```json[\s\S]*?```/g, "")     // remove codeblock json
-      .replace(/\{[\s\S]*?\}/g, "")           // remove any json object
-      .replace(/Here is[\s\S]*?:/gi, "")      // remove "Here is a Premium resume..."
+      .replace(/```json[\s\S]*?```/g, "") // remove codeblock json
+      .replace(/\{[\s\S]*?\}/g, "") // remove any json object
+      .replace(/Here is[\s\S]*?:/gi, "") // remove "Here is a Premium resume..."
       .replace(/PREMIUM\+ RESUME RULES[\s\S]*/gi, "") // remove rule section
       .replace(/provided information/gi, "")
-      .replace(/====[\s\S]*/g, "")            // remove separators / system text
+      .replace(/====[\s\S]*/g, "") // remove separators / system text
       .trim();
   };
 
@@ -100,7 +100,7 @@ export default function FacultyProfile() {
         if (!facultyId) return setLoadingProfile(false);
 
         const res = await axios.get(
-          `http://localhost:5000/api/faculty/profile/${facultyId}`
+          `${API_BASE_URL}/api/faculty/profile/${facultyId}`
         );
 
         const savedProfile = res.data || {};
@@ -130,8 +130,8 @@ export default function FacultyProfile() {
         };
 
         setFacultyDetails(merged);
-      } catch {}
-      finally {
+      } catch {
+      } finally {
         setLoadingProfile(false);
       }
     };
@@ -144,7 +144,7 @@ export default function FacultyProfile() {
     try {
       setSaving(true);
 
-      await axios.post("http://localhost:5000/api/faculty/profile/save", {
+      await axios.post("${API_BASE_URL}/api/faculty/profile/save", {
         facultyId,
         data: facultyDetails,
       });
@@ -162,10 +162,10 @@ export default function FacultyProfile() {
     try {
       setLoadingResume(true);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/resume/generate",
-        { facultyId, ...facultyDetails }
-      );
+      const res = await axios.post("${API_BASE_URL}/api/resume/generate", {
+        facultyId,
+        ...facultyDetails,
+      });
 
       setResume(cleanResumeText(res.data.resume)); // CLEAN AI RESPONSE
     } catch {
@@ -205,7 +205,6 @@ export default function FacultyProfile() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-5xl mx-auto">
-
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Faculty Profile</h1>
@@ -220,7 +219,6 @@ export default function FacultyProfile() {
 
         {/* FULL WIDTH FORM */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
-
           <div className="flex space-x-3 border-b pb-3 overflow-x-auto">
             {tabs.map((tab) => (
               <button
@@ -239,19 +237,31 @@ export default function FacultyProfile() {
 
           <div className="mt-6">
             {activeTab === "Personal Details" && (
-              <PersonalDetails data={facultyDetails.personalDetails} updateField={updateField} />
+              <PersonalDetails
+                data={facultyDetails.personalDetails}
+                updateField={updateField}
+              />
             )}
 
             {activeTab === "Bio / Education" && (
-              <Education data={facultyDetails.education} updateField={updateField} />
+              <Education
+                data={facultyDetails.education}
+                updateField={updateField}
+              />
             )}
 
             {activeTab === "Experience" && (
-              <Experience data={facultyDetails.experience} updateField={updateField} />
+              <Experience
+                data={facultyDetails.experience}
+                updateField={updateField}
+              />
             )}
 
             {activeTab === "Publications" && (
-              <Publications data={facultyDetails.publications} updateField={updateField} />
+              <Publications
+                data={facultyDetails.publications}
+                updateField={updateField}
+              />
             )}
 
             {activeTab === "Current Roles" && (
@@ -259,7 +269,10 @@ export default function FacultyProfile() {
             )}
 
             {activeTab === "Achievements" && (
-              <Achievements data={facultyDetails.achievements} updateField={updateField} />
+              <Achievements
+                data={facultyDetails.achievements}
+                updateField={updateField}
+              />
             )}
           </div>
         </div>
@@ -267,10 +280,10 @@ export default function FacultyProfile() {
         {/* BUTTON TO OPEN POPUP */}
         <button
           onClick={async () => {
-            setShowModal(true);      // Popup opens instantly
-            setLoadingResume(true);  // Show loading inside popup
-            setResume("");           // Clear old
-            await generateResume();  // Generate new resume
+            setShowModal(true); // Popup opens instantly
+            setLoadingResume(true); // Show loading inside popup
+            setResume(""); // Clear old
+            await generateResume(); // Generate new resume
           }}
           className="mt-6 w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl text-lg"
         >
@@ -284,7 +297,6 @@ export default function FacultyProfile() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative">
-
             {/* Close Button */}
             <button
               onClick={() => setShowModal(false)}
@@ -322,11 +334,9 @@ export default function FacultyProfile() {
                 </button>
               </>
             )}
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -359,15 +369,68 @@ function Input({ label, type = "text", value, onChange, textarea = false }) {
 function PersonalDetails({ data, updateField }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Input label="Full Name" value={data.fullName} onChange={(e) => updateField("personalDetails", "fullName", e.target.value)} />
-      <Input label="Email" value={data.email} onChange={(e) => updateField("personalDetails", "email", e.target.value)} />
-      <Input label="Phone" value={data.phone} onChange={(e) => updateField("personalDetails", "phone", e.target.value)} />
-      <Input label="Gender" value={data.gender} onChange={(e) => updateField("personalDetails", "gender", e.target.value)} />
-      <Input label="Date of Birth" type="date" value={data.dob} onChange={(e) => updateField("personalDetails", "dob", e.target.value)} />
-      <Input label="Country" value={data.country} onChange={(e) => updateField("personalDetails", "country", e.target.value)} />
-      <Input label="State" value={data.state} onChange={(e) => updateField("personalDetails", "state", e.target.value)} />
-      <Input label="University" value={data.university} onChange={(e) => updateField("personalDetails", "university", e.target.value)} />
-      <Input label="Profile Image URL" value={data.profileImage} onChange={(e) => updateField("personalDetails", "profileImage", e.target.value)} />
+      <Input
+        label="Full Name"
+        value={data.fullName}
+        onChange={(e) =>
+          updateField("personalDetails", "fullName", e.target.value)
+        }
+      />
+      <Input
+        label="Email"
+        value={data.email}
+        onChange={(e) =>
+          updateField("personalDetails", "email", e.target.value)
+        }
+      />
+      <Input
+        label="Phone"
+        value={data.phone}
+        onChange={(e) =>
+          updateField("personalDetails", "phone", e.target.value)
+        }
+      />
+      <Input
+        label="Gender"
+        value={data.gender}
+        onChange={(e) =>
+          updateField("personalDetails", "gender", e.target.value)
+        }
+      />
+      <Input
+        label="Date of Birth"
+        type="date"
+        value={data.dob}
+        onChange={(e) => updateField("personalDetails", "dob", e.target.value)}
+      />
+      <Input
+        label="Country"
+        value={data.country}
+        onChange={(e) =>
+          updateField("personalDetails", "country", e.target.value)
+        }
+      />
+      <Input
+        label="State"
+        value={data.state}
+        onChange={(e) =>
+          updateField("personalDetails", "state", e.target.value)
+        }
+      />
+      <Input
+        label="University"
+        value={data.university}
+        onChange={(e) =>
+          updateField("personalDetails", "university", e.target.value)
+        }
+      />
+      <Input
+        label="Profile Image URL"
+        value={data.profileImage}
+        onChange={(e) =>
+          updateField("personalDetails", "profileImage", e.target.value)
+        }
+      />
     </div>
   );
 }
@@ -375,9 +438,27 @@ function PersonalDetails({ data, updateField }) {
 function Education({ data, updateField }) {
   return (
     <div className="space-y-4">
-      <Input label="Highest Qualification" value={data.highestQualification} onChange={(e) => updateField("education", "highestQualification", e.target.value)} />
-      <Input label="Specialization" value={data.specialization} onChange={(e) => updateField("education", "specialization", e.target.value)} />
-      <Input label="Certificate Link" value={data.certificateLink} onChange={(e) => updateField("education", "certificateLink", e.target.value)} />
+      <Input
+        label="Highest Qualification"
+        value={data.highestQualification}
+        onChange={(e) =>
+          updateField("education", "highestQualification", e.target.value)
+        }
+      />
+      <Input
+        label="Specialization"
+        value={data.specialization}
+        onChange={(e) =>
+          updateField("education", "specialization", e.target.value)
+        }
+      />
+      <Input
+        label="Certificate Link"
+        value={data.certificateLink}
+        onChange={(e) =>
+          updateField("education", "certificateLink", e.target.value)
+        }
+      />
     </div>
   );
 }
@@ -385,9 +466,27 @@ function Education({ data, updateField }) {
 function Experience({ data, updateField }) {
   return (
     <div className="space-y-4">
-      <Input label="Current Position" value={data.currentPosition} onChange={(e) => updateField("experience", "currentPosition", e.target.value)} />
-      <Input label="Years of Experience" type="number" value={data.yearsOfExperience} onChange={(e) => updateField("experience", "yearsOfExperience", e.target.value)} />
-      <Input label="Past Roles" textarea value={data.pastRoles} onChange={(e) => updateField("experience", "pastRoles", e.target.value)} />
+      <Input
+        label="Current Position"
+        value={data.currentPosition}
+        onChange={(e) =>
+          updateField("experience", "currentPosition", e.target.value)
+        }
+      />
+      <Input
+        label="Years of Experience"
+        type="number"
+        value={data.yearsOfExperience}
+        onChange={(e) =>
+          updateField("experience", "yearsOfExperience", e.target.value)
+        }
+      />
+      <Input
+        label="Past Roles"
+        textarea
+        value={data.pastRoles}
+        onChange={(e) => updateField("experience", "pastRoles", e.target.value)}
+      />
     </div>
   );
 }
@@ -395,10 +494,32 @@ function Experience({ data, updateField }) {
 function Publications({ data, updateField }) {
   return (
     <div className="space-y-4">
-      <Input label="ORCID" value={data.orcid} onChange={(e) => updateField("publications", "orcid", e.target.value)} />
-      <Input label="Google Scholar ID" value={data.scholarId} onChange={(e) => updateField("publications", "scholarId", e.target.value)} />
-      <Input label="Scopus ID" value={data.scopusId} onChange={(e) => updateField("publications", "scopusId", e.target.value)} />
-      <Input label="ResearchGate" value={data.researchGate} onChange={(e) => updateField("publications", "researchGate", e.target.value)} />
+      <Input
+        label="ORCID"
+        value={data.orcid}
+        onChange={(e) => updateField("publications", "orcid", e.target.value)}
+      />
+      <Input
+        label="Google Scholar ID"
+        value={data.scholarId}
+        onChange={(e) =>
+          updateField("publications", "scholarId", e.target.value)
+        }
+      />
+      <Input
+        label="Scopus ID"
+        value={data.scopusId}
+        onChange={(e) =>
+          updateField("publications", "scopusId", e.target.value)
+        }
+      />
+      <Input
+        label="ResearchGate"
+        value={data.researchGate}
+        onChange={(e) =>
+          updateField("publications", "researchGate", e.target.value)
+        }
+      />
     </div>
   );
 }
@@ -406,8 +527,20 @@ function Publications({ data, updateField }) {
 function Roles({ data, updateField }) {
   return (
     <div className="space-y-4">
-      <Input label="Administrative Roles" textarea value={data.adminRoles} onChange={(e) => updateField("roles", "adminRoles", e.target.value)} />
-      <Input label="Responsibilities" textarea value={data.responsibilities} onChange={(e) => updateField("roles", "responsibilities", e.target.value)} />
+      <Input
+        label="Administrative Roles"
+        textarea
+        value={data.adminRoles}
+        onChange={(e) => updateField("roles", "adminRoles", e.target.value)}
+      />
+      <Input
+        label="Responsibilities"
+        textarea
+        value={data.responsibilities}
+        onChange={(e) =>
+          updateField("roles", "responsibilities", e.target.value)
+        }
+      />
     </div>
   );
 }
@@ -415,9 +548,28 @@ function Roles({ data, updateField }) {
 function Achievements({ data, updateField }) {
   return (
     <div className="space-y-4">
-      <Input label="Awards" textarea value={data.awards} onChange={(e) => updateField("achievements", "awards", e.target.value)} />
-      <Input label="Funded Projects" textarea value={data.fundedProjects} onChange={(e) => updateField("achievements", "fundedProjects", e.target.value)} />
-      <Input label="Certifications" textarea value={data.certifications} onChange={(e) => updateField("achievements", "certifications", e.target.value)} />
+      <Input
+        label="Awards"
+        textarea
+        value={data.awards}
+        onChange={(e) => updateField("achievements", "awards", e.target.value)}
+      />
+      <Input
+        label="Funded Projects"
+        textarea
+        value={data.fundedProjects}
+        onChange={(e) =>
+          updateField("achievements", "fundedProjects", e.target.value)
+        }
+      />
+      <Input
+        label="Certifications"
+        textarea
+        value={data.certifications}
+        onChange={(e) =>
+          updateField("achievements", "certifications", e.target.value)
+        }
+      />
     </div>
   );
 }

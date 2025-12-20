@@ -1,34 +1,44 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../../config/api";
 
-const API_BASE = "http://localhost:5000/api/communication";
+const API_BASE = `${API_BASE_URL}/api/communication`;
 
 export default function Communication() {
-  // ✔ Fetch correct faculty ID from localStorage
   const facultyId = localStorage.getItem("facultyId");
+  const token = localStorage.getItem("token");
 
-  // Broadcast States
+  /* ---------------- BROADCAST ---------------- */
   const [title, setTitle] = useState("");
   const [bMessage, setBMessage] = useState("");
 
-  // Individual Message States
+  /* ---------------- PRIVATE ---------------- */
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [privateMessage, setPrivateMessage] = useState("");
   const [conversation, setConversation] = useState([]);
 
-  // ====================== LOAD STUDENTS ======================
+  /* ================= LOAD STUDENTS ================= */
   useEffect(() => {
-    fetch("http://localhost:5000/api/student")
+    fetch(`${API_BASE_URL}/api/student`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
       .then((res) => res.json())
-      .then((data) => setStudents(data.students))
+      .then((data) => setStudents(data.students || []))
       .catch(() => console.log("Error fetching students"));
-  }, []);
+  }, [token]);
 
-  // ====================== SEND BROADCAST ======================
+  /* ================= SEND BROADCAST ================= */
   const sendBroadcast = async () => {
+    if (!title || !bMessage) return alert("Fill all fields");
+
     await fetch(`${API_BASE}/broadcast`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         facultyId,
         title,
@@ -41,24 +51,34 @@ export default function Communication() {
     setBMessage("");
   };
 
-  // ====================== OPEN CONVERSATION ======================
+  /* ================= OPEN CONVERSATION ================= */
   const openConversation = async (studentId) => {
     setSelectedStudent(studentId);
 
     const res = await fetch(
-      `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${studentId}`
+      `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${studentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
+
     const data = await res.json();
-    setConversation(data);
+    setConversation(data || []);
   };
 
-  // ====================== SEND PRIVATE MESSAGE ======================
+  /* ================= SEND PRIVATE MESSAGE ================= */
   const sendPrivateMessage = async () => {
     if (!selectedStudent) return alert("Select a student first");
+    if (!privateMessage) return;
 
     await fetch(`${API_BASE}/private/faculty`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         facultyId,
         studentId: selectedStudent,
@@ -72,8 +92,7 @@ export default function Communication() {
 
   return (
     <div className="p-6 space-y-6">
-
-      {/* ------------------ BROADCAST SECTION ------------------ */}
+      {/* ------------------ BROADCAST ------------------ */}
       <div className="bg-white p-6 rounded shadow">
         <h2 className="text-xl font-bold mb-2">Broadcast Message</h2>
 
@@ -100,10 +119,9 @@ export default function Communication() {
         </button>
       </div>
 
-      {/* ------------------ PRIVATE CHAT SECTION ------------------ */}
+      {/* ------------------ PRIVATE CHAT ------------------ */}
       <div className="grid grid-cols-3 gap-4">
-
-        {/* STUDENT LIST */}
+        {/* STUDENTS */}
         <div className="bg-white p-4 rounded shadow">
           <h2 className="font-bold text-lg mb-2">Students</h2>
 
@@ -112,7 +130,9 @@ export default function Communication() {
               key={std._id}
               onClick={() => openConversation(std._id)}
               className={`cursor-pointer p-2 rounded mb-1 ${
-                selectedStudent === std._id ? "bg-blue-200" : "bg-gray-100"
+                selectedStudent === std._id
+                  ? "bg-blue-200"
+                  : "bg-gray-100"
               }`}
             >
               {std.name}
@@ -129,7 +149,9 @@ export default function Communication() {
               <div
                 key={msg._id}
                 className={`p-1 ${
-                  msg.from?._id === facultyId ? "text-right" : "text-left"
+                  msg.from?._id === facultyId
+                    ? "text-right"
+                    : "text-left"
                 }`}
               >
                 <span className="inline-block bg-white px-2 py-1 rounded shadow">

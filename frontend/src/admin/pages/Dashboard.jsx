@@ -8,6 +8,7 @@ import {
   Trash2,
   RefreshCcwDot,
 } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -17,22 +18,33 @@ export default function AdminDashboard() {
   });
 
   const [activities, setActivities] = useState([]);
-
   const token = localStorage.getItem("token");
 
-  // ===================== LOAD DASHBOARD DATA =====================
+  /* ===================== LOAD DASHBOARD DATA ===================== */
   const loadDashboard = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/dashboard", {
-        headers: { Authorization: "Bearer " + token },
+      const res = await fetch(`${API_BASE_URL}/api/admin/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const data = await res.json();
-      if (res.ok) {
-        setStats(data.stats || { students: 0, faculty: 0, classes: 0 });
-setActivities(data.activities || []);
 
+      if (!res.ok) {
+        console.error("Dashboard API error:", data);
+        return;
       }
+
+      setStats(
+        data.stats || {
+          students: 0,
+          faculty: 0,
+          classes: 0,
+        }
+      );
+
+      setActivities(Array.isArray(data.activities) ? data.activities : []);
     } catch (err) {
       console.error("Dashboard load error:", err);
     }
@@ -56,7 +68,6 @@ setActivities(data.activities || []);
 
       {/* TOP CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* STUDENTS */}
         <StatCard
           icon={<Users className="w-8 h-8 text-blue-600" />}
           title="Total Students"
@@ -64,7 +75,6 @@ setActivities(data.activities || []);
           color="from-blue-50 to-blue-100"
         />
 
-        {/* FACULTY */}
         <StatCard
           icon={<GraduationCap className="w-8 h-8 text-purple-600" />}
           title="Total Faculty"
@@ -72,7 +82,6 @@ setActivities(data.activities || []);
           color="from-purple-50 to-purple-100"
         />
 
-        {/* CLASSES */}
         <StatCard
           icon={<School className="w-8 h-8 text-green-600" />}
           title="Total Classes"
@@ -89,7 +98,9 @@ setActivities(data.activities || []);
         </h2>
 
         {activities.length === 0 ? (
-          <p className="text-gray-500 text-sm mt-3">No recent activity.</p>
+          <p className="text-gray-500 text-sm mt-3">
+            No recent activity.
+          </p>
         ) : (
           <div className="space-y-4 mt-4">
             {activities.map((a, i) => (
@@ -98,7 +109,9 @@ setActivities(data.activities || []);
                 className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border hover:bg-gray-100 transition"
               >
                 <div>
-                  <p className="font-semibold text-gray-900">{a.message}</p>
+                  <p className="font-semibold text-gray-900">
+                    {a.message}
+                  </p>
                   <p className="text-xs text-gray-500">{a.time}</p>
                 </div>
 
@@ -122,7 +135,7 @@ setActivities(data.activities || []);
   );
 }
 
-/* ===================== STAT CARD COMPONENT ===================== */
+/* ===================== STAT CARD ===================== */
 function StatCard({ icon, title, value, color }) {
   return (
     <div
@@ -130,9 +143,13 @@ function StatCard({ icon, title, value, color }) {
     >
       <div className="flex items-center justify-between">
         {icon}
-        <span className="text-3xl font-extrabold text-gray-800">{value}</span>
+        <span className="text-3xl font-extrabold text-gray-800">
+          {value}
+        </span>
       </div>
-      <p className="text-gray-600 text-sm mt-3 font-semibold">{title}</p>
+      <p className="text-gray-600 text-sm mt-3 font-semibold">
+        {title}
+      </p>
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle } from "lucide-react";
 
+import { API_BASE_URL } from "../../config/api";
+
 export default function AttemptAssessment() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
   const studentId = localStorage.getItem("studentId");
@@ -17,25 +18,23 @@ export default function AttemptAssessment() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  /** FETCH ASSESSMENT */
+  /* ================= FETCH ASSESSMENT ================= */
   useEffect(() => {
     async function fetchAssessment() {
       try {
-       const res = await axios.get(
-  `http://localhost:5000/api/student-assessments/view/${id}`,
-  { headers: { Authorization: "Bearer " + token } }
-);
-
+        const res = await axios.get(
+          `${API_BASE_URL}/api/student-assessments/view/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
         setAssessment(res.data);
 
-        // initialize empty answers
+        // Initialize answers
         const init = {};
         res.data.questions.forEach((q) => {
           init[q._id] = "";
         });
         setAnswers(init);
-
       } catch (err) {
         console.error("Assessment fetch error:", err);
         setError("Failed to load assessment.");
@@ -45,9 +44,9 @@ export default function AttemptAssessment() {
     }
 
     fetchAssessment();
-  }, [id]);
+  }, [id, token]);
 
-  /** UPDATE ANSWER */
+  /* ================= UPDATE ANSWER ================= */
   const updateAnswer = (qid, value) => {
     setAnswers((prev) => ({
       ...prev,
@@ -55,17 +54,16 @@ export default function AttemptAssessment() {
     }));
   };
 
-  /** SUBMIT ANSWERS */
+  /* ================= SUBMIT ANSWERS ================= */
   const submitNow = async () => {
     setSubmitting(true);
 
     try {
-      // Convert answers object → array
       const answersArray = Object.entries(answers).map(
         ([questionId, answer]) => ({
           questionId,
           answer,
-          isCorrect: null
+          isCorrect: null,
         })
       );
 
@@ -75,19 +73,14 @@ export default function AttemptAssessment() {
         answers: answersArray,
       };
 
-      console.log("Submitting payload:", payload);
-
-
       await axios.post(
-        "http://localhost:5000/api/student/assessment/submit",
+        `${API_BASE_URL}/api/student/assessment/submit`,
         payload,
-        { headers: { Authorization: "Bearer " + token } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       alert("Assessment submitted successfully!");
       window.location.href = "/student/assessments";
-
-
     } catch (err) {
       console.error("Submit error:", err);
       alert("Failed to submit assessment.");
@@ -96,7 +89,7 @@ export default function AttemptAssessment() {
     }
   };
 
-  /** LOADING UI */
+  /* ================= LOADING ================= */
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-gray-600">
@@ -106,7 +99,7 @@ export default function AttemptAssessment() {
     );
   }
 
-  /** ERROR UI */
+  /* ================= ERROR ================= */
   if (error || !assessment) {
     return (
       <p className="text-center text-red-500 mt-10 font-semibold text-lg">
@@ -117,8 +110,7 @@ export default function AttemptAssessment() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-
-      {/* STICKY HEADER */}
+      {/* HEADER */}
       <div className="sticky top-0 bg-white shadow z-20 px-6 py-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-indigo-700">
           {assessment.title}
@@ -131,11 +123,13 @@ export default function AttemptAssessment() {
         >
           {submitting ? (
             <>
-              <Loader2 size={18} className="animate-spin" /> Submitting...
+              <Loader2 size={18} className="animate-spin" />
+              Submitting...
             </>
           ) : (
             <>
-              <CheckCircle size={18} /> Submit
+              <CheckCircle size={18} />
+              Submit
             </>
           )}
         </button>
@@ -152,7 +146,7 @@ export default function AttemptAssessment() {
         </div>
       )}
 
-      {/* QUESTIONS SECTION */}
+      {/* QUESTIONS */}
       <div className="px-6 space-y-6">
         {assessment.questions.map((q, index) => (
           <motion.div
@@ -176,7 +170,7 @@ export default function AttemptAssessment() {
 
                   return (
                     <label
-                      key={q._id + "_opt_" + optIdx}
+                      key={`${q._id}_${optIdx}`}
                       className={`flex items-center p-3 rounded-lg cursor-pointer border transition ${
                         selected
                           ? "bg-indigo-50 border-indigo-500"
@@ -197,7 +191,7 @@ export default function AttemptAssessment() {
               </div>
             )}
 
-            {/* SHORT ANSWER */}
+            {/* SHORT */}
             {q.type === "short" && (
               <input
                 type="text"
@@ -216,12 +210,11 @@ export default function AttemptAssessment() {
                 onChange={(e) => updateAnswer(q._id, e.target.value)}
                 className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-indigo-300"
                 placeholder="Write your answer here..."
-              ></textarea>
+              />
             )}
           </motion.div>
         ))}
       </div>
-
     </div>
   );
 }

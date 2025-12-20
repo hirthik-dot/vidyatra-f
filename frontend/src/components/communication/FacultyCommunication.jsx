@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../../config/api";
 
-const API_BASE = "http://localhost:5000/api/communication";
+const API_BASE = `${API_BASE_URL}/api/communication`;
 
 export default function FacultyCommunication({ facultyId }) {
   const [activeTab, setActiveTab] = useState("broadcast");
@@ -16,37 +17,52 @@ export default function FacultyCommunication({ facultyId }) {
   const [currentStudentId, setCurrentStudentId] = useState(null);
   const [conversation, setConversation] = useState([]);
 
-  // Get student list
-  useEffect(() => {
-    fetch(`${API_BASE}/students`)
-      .then((res) => res.json())
-      .then((data) => setStudents(data))
-      .catch((err) => console.error(err));
-  }, []);
+  const token = localStorage.getItem("token");
 
-  // Get conversation if student selected
+  /* ================= LOAD STUDENTS ================= */
+  useEffect(() => {
+    fetch(`${API_BASE}/students`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setStudents(data || []))
+      .catch((err) => console.error("Load students error:", err));
+  }, [token]);
+
+  /* ================= LOAD CONVERSATION ================= */
   useEffect(() => {
     if (!currentStudentId) return;
+
     fetch(
-      `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${currentStudentId}`
+      `${API_BASE}/private/conversation?facultyId=${facultyId}&studentId=${currentStudentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     )
       .then((res) => res.json())
-      .then((data) => setConversation(data))
-      .catch((err) => console.error(err));
-  }, [currentStudentId, facultyId]);
+      .then((data) => setConversation(data || []))
+      .catch((err) => console.error("Load conversation error:", err));
+  }, [currentStudentId, facultyId, token]);
 
-  // Send broadcast
+  /* ================= SEND BROADCAST ================= */
   const handleBroadcastSubmit = async (e) => {
     e.preventDefault();
 
     const res = await fetch(`${API_BASE}/broadcast`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ facultyId, title, body: broadcastBody }),
     });
 
     if (res.ok) {
-      alert("Broadcast Sent!");
+      alert("Broadcast sent!");
       setTitle("");
       setBroadcastBody("");
     } else {
@@ -54,7 +70,7 @@ export default function FacultyCommunication({ facultyId }) {
     }
   };
 
-  // Send private message
+  /* ================= SEND PRIVATE MESSAGE ================= */
   const handlePrivateSubmit = async (e) => {
     e.preventDefault();
 
@@ -65,7 +81,10 @@ export default function FacultyCommunication({ facultyId }) {
 
     const res = await fetch(`${API_BASE}/private/faculty`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         facultyId,
         studentIds: selectedStudentIds,
@@ -99,21 +118,28 @@ export default function FacultyCommunication({ facultyId }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-blue-700">Faculty Communication</h2>
+      <h2 className="text-2xl font-bold text-blue-700">
+        Faculty Communication
+      </h2>
 
       {/* Tabs */}
       <div className="flex gap-2">
         <button
           className={`px-4 py-2 rounded ${
-            activeTab === "broadcast" ? "bg-blue-600 text-white" : "bg-gray-200"
+            activeTab === "broadcast"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200"
           }`}
           onClick={() => setActiveTab("broadcast")}
         >
           Broadcast
         </button>
+
         <button
           className={`px-4 py-2 rounded ${
-            activeTab === "individual" ? "bg-blue-600 text-white" : "bg-gray-200"
+            activeTab === "individual"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200"
           }`}
           onClick={() => setActiveTab("individual")}
         >
@@ -132,6 +158,7 @@ export default function FacultyCommunication({ facultyId }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+
             <textarea
               placeholder="Message"
               className="border p-2 rounded w-full mt-2"
@@ -139,6 +166,7 @@ export default function FacultyCommunication({ facultyId }) {
               value={broadcastBody}
               onChange={(e) => setBroadcastBody(e.target.value)}
             />
+
             <button
               type="submit"
               className="bg-blue-600 text-white px-4 py-2 mt-2 rounded"
@@ -152,7 +180,7 @@ export default function FacultyCommunication({ facultyId }) {
       {/* Individual */}
       {activeTab === "individual" && (
         <div className="grid grid-cols-3 gap-4">
-          {/* Student list */}
+          {/* Students */}
           <div className="bg-white p-4 shadow rounded">
             <h3 className="font-semibold">Students</h3>
             <ul className="max-h-64 overflow-y-auto">
@@ -181,6 +209,7 @@ export default function FacultyCommunication({ facultyId }) {
           {/* Conversation */}
           <div className="col-span-2 bg-white p-4 shadow rounded flex flex-col">
             <h3 className="font-semibold mb-2">Conversation</h3>
+
             <div className="flex-1 overflow-y-auto border p-2 rounded">
               {conversation.map((msg) => (
                 <div

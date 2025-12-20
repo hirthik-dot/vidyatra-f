@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 
 export default function LeaveApproval() {
   const facultyId = localStorage.getItem("facultyId");
+  const token = localStorage.getItem("token");
+
   const [requests, setRequests] = useState([]);
   const [rejectModal, setRejectModal] = useState({ open: false, id: null });
   const [rejectReason, setRejectReason] = useState("");
 
+  /* ================= FETCH REQUESTS ================= */
   const fetchRequests = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/leave/faculty/${facultyId}`
+        `${API_BASE_URL}/api/leave/faculty/${facultyId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-      setRequests(res.data);
+      setRequests(res.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -22,9 +29,14 @@ export default function LeaveApproval() {
     fetchRequests();
   }, []);
 
+  /* ================= APPROVE ================= */
   const approveRequest = async (id) => {
     try {
-      await axios.post(`http://localhost:5000/api/leave/approve/${id}`);
+      await axios.post(
+        `${API_BASE_URL}/api/leave/approve/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       fetchRequests();
     } catch (err) {
       console.error(err);
@@ -32,12 +44,15 @@ export default function LeaveApproval() {
     }
   };
 
+  /* ================= REJECT ================= */
   const rejectRequest = async () => {
     try {
       await axios.post(
-        `http://localhost:5000/api/leave/reject/${rejectModal.id}`,
-        { reason: rejectReason }
+        `${API_BASE_URL}/api/leave/reject/${rejectModal.id}`,
+        { reason: rejectReason },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setRejectModal({ open: false, id: null });
       setRejectReason("");
       fetchRequests();
@@ -47,6 +62,7 @@ export default function LeaveApproval() {
     }
   };
 
+  /* ================= STATUS COLOR ================= */
   const statusColor = (status) => {
     if (status === "approved") return "bg-green-200 text-green-800";
     if (status === "rejected") return "bg-red-200 text-red-800";
@@ -55,7 +71,9 @@ export default function LeaveApproval() {
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700">Leave / OD Approvals</h2>
+      <h2 className="text-3xl font-bold text-blue-700">
+        Leave / OD Approvals
+      </h2>
 
       <div className="bg-white rounded-xl shadow p-4 overflow-x-auto">
         <table className="w-full table-auto">
@@ -86,7 +104,10 @@ export default function LeaveApproval() {
 
                 <td className="p-2">
                   {req.type === "leave" &&
-                    `${req.fromDate?.slice(0, 10)} → ${req.toDate?.slice(0, 10)}`}
+                    `${req.fromDate?.slice(0, 10)} → ${req.toDate?.slice(
+                      0,
+                      10
+                    )}`}
                   {req.type === "od" && req.date?.slice(0, 10)}
                 </td>
 
@@ -96,8 +117,9 @@ export default function LeaveApproval() {
                   {req.attachmentUrl ? (
                     <a
                       className="text-blue-600 underline"
-                      href={`http://localhost:5000${req.attachmentUrl}`}
+                      href={`${API_BASE_URL}${req.attachmentUrl}`}
                       target="_blank"
+                      rel="noreferrer"
                     >
                       View
                     </a>
@@ -114,8 +136,9 @@ export default function LeaveApproval() {
                   >
                     {req.status}
                   </span>
+
                   {req.status === "rejected" && (
-                    <p className="text-xs text-red-600">
+                    <p className="text-xs text-red-600 mt-1">
                       Reason: {req.rejectReason}
                     </p>
                   )}
@@ -148,7 +171,7 @@ export default function LeaveApproval() {
         </table>
       </div>
 
-      {/* Reject Modal */}
+      {/* ================= REJECT MODAL ================= */}
       {rejectModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md space-y-3">

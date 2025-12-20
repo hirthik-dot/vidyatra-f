@@ -1,27 +1,69 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
 
 export default function Login() {
   const [role, setRole] = useState("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // TODO: replace with real backend auth
-    if (role === "student") navigate("/student/dashboard");
-    if (role === "faculty") navigate("/faculty/dashboard");
-    if (role === "admin") navigate("/admin/dashboard");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      // Save auth details
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("role", data.user.role);
+
+      const realId = data.user._id || data.user.id;
+
+      // Redirect by role
+      if (data.user.role === "student") {
+        localStorage.setItem("studentId", realId);
+        navigate("/student/dashboard");
+      } else if (data.user.role === "faculty") {
+        localStorage.setItem("facultyId", realId);
+        navigate("/faculty/dashboard");
+      } else if (data.user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        setError("Unknown user role");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Server error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cyan-50 p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl space-y-6">
-        {/* Header Block */}
+        {/* Header */}
         <div className="flex flex-col items-center text-center space-y-1">
           <img
             src="/PUNJAB.jpg"
@@ -92,12 +134,19 @@ export default function Login() {
             />
           </div>
 
+          {error && (
+            <p className="text-red-600 text-sm font-semibold">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="w-full flex justify-center items-center px-4 py-3 rounded-lg text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-lg"
+            disabled={loading}
+            className="w-full flex justify-center items-center px-4 py-3 rounded-lg text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-lg disabled:opacity-60"
           >
             <LogIn className="w-5 h-5 mr-2" />
-            Login as {role.charAt(0).toUpperCase() + role.slice(1)}
+            {loading
+              ? "Logging in..."
+              : `Login as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
           </button>
         </form>
       </div>

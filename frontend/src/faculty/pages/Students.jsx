@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, GraduationCap, ChevronRight } from "lucide-react";
+import { Search, GraduationCap, ChevronRight } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 export default function CollegeStudents() {
   const [students, setStudents] = useState([]);
@@ -15,34 +16,49 @@ export default function CollegeStudents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("");
 
+  /* ---------------------------------------------------------
+     FETCH STUDENTS (RENDER BACKEND)
+  ---------------------------------------------------------- */
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/student/all/full");
-        setStudents(res.data);
-        setLoading(false);
+        const res = await axios.get(
+          `${API_BASE_URL}/api/student/all/full`
+        );
+
+        setStudents(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
-        console.error(err);
+        console.error("Fetch students error:", err);
         setError("Unable to load students");
+      } finally {
         setLoading(false);
       }
     };
+
     fetchStudents();
   }, []);
 
+  /* ---------------------------------------------------------
+     FILTER OPTIONS
+  ---------------------------------------------------------- */
   const departments = ["CSE", "ECE", "ME", "EEE", "MBA"];
   const sections = ["A", "B", "C"];
   const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
   const sortOptions = ["Name", "Reg No.", "CGPA"];
 
+  /* ---------------------------------------------------------
+     FILTER + SORT LOGIC
+  ---------------------------------------------------------- */
   const displayedStudents = useMemo(() => {
     let filtered = students.filter((s) => {
       const mDept = !selectedDept || s.dept === selectedDept;
       const mSection = !selectedSection || s.section === selectedSection;
       const mYear = !selectedYear || s.year === selectedYear;
+
       const mSearch =
         s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.regNo?.toLowerCase().includes(searchTerm.toLowerCase());
+
       return mDept && mSection && mYear && mSearch;
     });
 
@@ -50,28 +66,46 @@ export default function CollegeStudents() {
       filtered.sort((a, b) => {
         if (sortBy === "Name") return a.name.localeCompare(b.name);
         if (sortBy === "Reg No.") return a.regNo.localeCompare(b.regNo);
-        if (sortBy === "CGPA") return b.cgpa - a.cgpa;
+        if (sortBy === "CGPA") return (b.cgpa || 0) - (a.cgpa || 0);
+        return 0;
       });
     }
 
     return filtered;
-  }, [students, selectedDept, selectedSection, selectedYear, searchTerm, sortBy]);
+  }, [
+    students,
+    selectedDept,
+    selectedSection,
+    selectedYear,
+    searchTerm,
+    sortBy,
+  ]);
 
-  if (loading)
+  /* ---------------------------------------------------------
+     STATES
+  ---------------------------------------------------------- */
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen text-xl text-blue-600">
+      <div className="flex items-center justify-center h-screen text-xl text-indigo-600">
         Loading Students...
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
-      <div className="text-red-600 text-center p-6 text-xl">{error}</div>
+      <div className="text-red-600 text-center p-6 text-xl">
+        {error}
+      </div>
     );
+  }
 
+  /* ---------------------------------------------------------
+     UI
+  ---------------------------------------------------------- */
   return (
     <div className="p-6 min-h-screen bg-gradient-to-bl from-indigo-100 via-white to-blue-100">
-      {/* PAGE HEADER */}
+      {/* HEADER */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -84,13 +118,8 @@ export default function CollegeStudents() {
       </motion.div>
 
       {/* FILTER PANEL */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg p-5 border border-white/50 mb-6"
-      >
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg p-5 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Search */}
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-3 text-gray-500" size={20} />
             <input
@@ -98,13 +127,12 @@ export default function CollegeStudents() {
               placeholder="Search by name or Reg No."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 p-3 rounded-xl border shadow-sm focus:ring focus:ring-indigo-300"
+              className="w-full pl-10 p-3 rounded-xl border shadow-sm"
             />
           </div>
 
-          {/* Dropdowns */}
           <select
-            className="p-3 rounded-xl border shadow-sm"
+            className="p-3 rounded-xl border"
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
           >
@@ -115,7 +143,7 @@ export default function CollegeStudents() {
           </select>
 
           <select
-            className="p-3 rounded-xl border shadow-sm"
+            className="p-3 rounded-xl border"
             value={selectedSection}
             onChange={(e) => setSelectedSection(e.target.value)}
           >
@@ -126,7 +154,7 @@ export default function CollegeStudents() {
           </select>
 
           <select
-            className="p-3 rounded-xl border shadow-sm"
+            className="p-3 rounded-xl border"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
           >
@@ -137,10 +165,9 @@ export default function CollegeStudents() {
           </select>
         </div>
 
-        {/* Sort */}
         <div className="mt-4">
           <select
-            className="p-3 rounded-xl border shadow-sm"
+            className="p-3 rounded-xl border"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -150,24 +177,20 @@ export default function CollegeStudents() {
             ))}
           </select>
         </div>
-      </motion.div>
+      </div>
 
       {/* TABLE */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="bg-white rounded-3xl p-6 shadow-xl border border-gray-200 overflow-x-auto"
-      >
+      <div className="bg-white rounded-3xl p-6 shadow-xl overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="text-gray-600 border-b">
+            <tr className="border-b text-gray-600">
               <th className="p-3">Name</th>
               <th className="p-3">Reg No.</th>
               <th className="p-3">Dept</th>
               <th className="p-3">Section</th>
               <th className="p-3">Year</th>
               <th className="p-3">CGPA</th>
-              <th className="p-3 text-right"></th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -175,46 +198,45 @@ export default function CollegeStudents() {
               {displayedStudents.map((s) => (
                 <motion.tr
                   key={s._id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => setSelectedStudent(s)}
                   className="border-b hover:bg-indigo-50 cursor-pointer"
+                  onClick={() => setSelectedStudent(s)}
                 >
                   <td className="p-3 font-semibold">{s.name}</td>
                   <td className="p-3">{s.regNo}</td>
                   <td className="p-3">{s.dept}</td>
                   <td className="p-3">{s.section}</td>
                   <td className="p-3">{s.year}</td>
-                  <td className="p-3">{s.cgpa}</td>
+                  <td className="p-3">{s.cgpa ?? "-"}</td>
                   <td className="p-3 text-right">
-                    <ChevronRight className="inline text-indigo-600" />
+                    <ChevronRight className="text-indigo-600" />
                   </td>
                 </motion.tr>
               ))}
             </AnimatePresence>
           </tbody>
         </table>
-      </motion.div>
+      </div>
 
-      {/* STUDENT MODAL */}
+      {/* MODAL */}
       <AnimatePresence>
         {selectedStudent && (
           <motion.div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
           >
             <motion.div
+              className="bg-white rounded-3xl p-6 max-w-md w-full"
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
-              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl"
             >
               <button
-                className="text-gray-500 float-right text-xl"
+                className="float-right text-xl"
                 onClick={() => setSelectedStudent(null)}
               >
                 ×
@@ -222,27 +244,22 @@ export default function CollegeStudents() {
 
               <div className="text-center mt-4">
                 <img
-                  src={selectedStudent.avatar || "https://ui-avatars.com/api/?name=" + selectedStudent.name}
-                  className="w-24 h-24 rounded-full mx-auto mb-4 shadow-lg"
+                  src={
+                    selectedStudent.avatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      selectedStudent.name
+                    )}`
+                  }
+                  alt="Student Avatar"
+                  className="w-24 h-24 rounded-full mx-auto mb-4"
                 />
-                <h3 className="text-2xl font-bold">{selectedStudent.name}</h3>
-                <p className="text-gray-500">{selectedStudent.regNo}</p>
-                <p className="text-gray-500">{selectedStudent.dept} • {selectedStudent.section}</p>
+                <h3 className="text-2xl font-bold">
+                  {selectedStudent.name}
+                </h3>
+                <p className="text-gray-500">
+                  {selectedStudent.regNo}
+                </p>
               </div>
-
-              <div className="mt-6 space-y-2">
-                <p><strong>Email:</strong> {selectedStudent.email}</p>
-                <p><strong>Contact:</strong> {selectedStudent.contact}</p>
-                <p><strong>DOB:</strong> {selectedStudent.dob}</p>
-                <p><strong>CGPA:</strong> {selectedStudent.cgpa}</p>
-              </div>
-
-              <button
-                onClick={() => setSelectedStudent(null)}
-                className="mt-6 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow"
-              >
-                Close
-              </button>
             </motion.div>
           </motion.div>
         )}

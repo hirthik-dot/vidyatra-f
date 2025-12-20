@@ -55,7 +55,7 @@ export default function FaceScanModal({ onVerified, onClose }) {
           formData.append("image", blob, "face.jpg");
 
           const res = await fetch(
-            "http://localhost:5000/api/student/attendance/face-scan",
+            "${API_BASE_URL}/api/student/attendance/face-scan",
             {
               method: "POST",
               headers: {
@@ -96,8 +96,9 @@ export default function FaceScanModal({ onVerified, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl border border-gray-200">
-
-        <h2 className="text-xl font-bold text-blue-700 mb-1">Face Verification</h2>
+        <h2 className="text-xl font-bold text-blue-700 mb-1">
+          Face Verification
+        </h2>
         <p className="text-xs text-gray-500 mb-3">
           Align your face in the frame and click <b>Verify</b>.
         </p>
