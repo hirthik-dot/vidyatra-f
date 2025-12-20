@@ -6,11 +6,10 @@ import mkcert from "vite-plugin-mkcert";
 export default defineConfig({
   plugins: [
     react(),
-    mkcert(), // HTTPS certificate
+    mkcert(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
-
       manifest: {
         name: "Vidyatra",
         short_name: "Vidyatra",
@@ -20,19 +19,10 @@ export default defineConfig({
         display: "standalone",
         start_url: "/",
         icons: [
-          {
-            src: "/pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
         ],
       },
-
       workbox: {
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,png,svg}"],
@@ -41,22 +31,22 @@ export default defineConfig({
   ],
 
   server: {
-    https: true,          // We keep HTTPS for geolocation permissions
-    host: "0.0.0.0",      // Allow LAN/mobile access
+    https: true,              // ✅ Needed for geo + camera
+    host: "0.0.0.0",
     port: 5173,
 
-    // 🔥 THE MAIN FIX: Force WebSocket to use ws:// (NOT wss://)
+    // ✅ FIXED: Use WSS automatically
     hmr: {
-      protocol: "ws",      // prevent wss:// which breaks on LAN
-      host: "10.172.4.59", // your LAN IP (change when network changes)
-      port: 5173,
+      protocol: "wss",        // 🔥 MUST be wss when https = true
+      host: "localhost",      // 🔥 DO NOT use LAN IP here
     },
 
+    // ✅ FIXED proxy
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: process.env.VITE_API_URL || "https://vidyatra-f-1-4obq.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
   },

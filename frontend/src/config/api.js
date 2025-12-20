@@ -1,21 +1,13 @@
 import axios from "axios";
 
-/**
- * 🔥 Render backend base URL
- * change only here in future
- */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://vidyatra-f-1-4obq.onrender.com";
 
-/**
- * Axios instance
- */
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-/**
- * Attach token automatically
- */
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
