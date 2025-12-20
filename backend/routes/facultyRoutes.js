@@ -1,14 +1,20 @@
-// backend/routes/facultyRoutes.js
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
+/* DASHBOARD */
+import {
+  getFacultyDashboard,
+} from "../controllers/facultyDashboardController.js";
+
+/* ATTENDANCE */
 import {
   getMyClassStudents,
   getPresentStudentsForFaculty,
   getFacultyAttendanceForDay,
-} from "../controllers/facultyDashboardController.js";
+} from "../controllers/facultyAttendanceController.js";
 
+/* TIMETABLE */
 import {
   getFacultyTodayTimetable,
   markFacultyPeriodAbsent,
@@ -17,30 +23,20 @@ import {
   getFacultyWeeklyTimetable,
 } from "../controllers/facultyTimetableController.js";
 
-import { getFacultyDashboard } from "../controllers/facultyDashboardController.js";
-
 const router = express.Router();
-
-// Protect + Restrict to faculty (this pattern is GOOD)
 const protectFaculty = [protect, requireRole("faculty")];
 
-/* ---------------------------------------------------------
-   FACULTY DASHBOARD
----------------------------------------------------------- */
+/* ---------------- DASHBOARD ---------------- */
 router.get("/dashboard", protectFaculty, getFacultyDashboard);
 
-/* ---------------------------------------------------------
-   FACULTY TIMETABLE ROUTES
----------------------------------------------------------- */
+/* ---------------- TIMETABLE ---------------- */
 router.get("/timetable", protectFaculty, getFacultyTodayTimetable);
 router.post("/timetable/mark-absent", protectFaculty, markFacultyPeriodAbsent);
 router.get("/free-periods", protectFaculty, getTodayFreePeriods);
 router.post("/timetable/claim", protectFaculty, claimFreePeriod);
 router.get("/timetable/weekly", protectFaculty, getFacultyWeeklyTimetable);
 
-/* ---------------------------------------------------------
-   FACULTY ATTENDANCE ROUTES
----------------------------------------------------------- */
+/* ---------------- ATTENDANCE ---------------- */
 router.get("/students", protectFaculty, getMyClassStudents);
 router.get("/attendance/current", protectFaculty, getPresentStudentsForFaculty);
 router.get("/attendance/day", protectFaculty, getFacultyAttendanceForDay);

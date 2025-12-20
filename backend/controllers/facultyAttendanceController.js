@@ -2,15 +2,15 @@ import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
 import ClassTimetable from "../models/ClassTimetable.js";
 
-const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-function getTodayName() {
+const getTodayName = () => {
   let day = DAYS[new Date().getDay()];
   if (day === "Saturday" || day === "Sunday") day = "Monday";
   return day;
-}
+};
 
-function getTodayRange() {
+const getTodayRange = () => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
 
@@ -18,13 +18,13 @@ function getTodayRange() {
   end.setHours(23, 59, 59, 999);
 
   return { start, end };
-}
+};
 
-function timeToMinutes(t) {
+const timeToMinutes = (t) => {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
-}
+};
 
 /* ----------------------------------------------------------
    1) Get all students of faculty’s class
@@ -41,13 +41,13 @@ export const getMyClassStudents = async (req, res) => {
       className,
     }).select("name roll");
 
-    return res.json({
+    res.json({
       className,
       totalStudents: students.length,
       students,
     });
   } catch (err) {
-    console.error("getMyClassStudents ERROR:", err);
+    console.error("getMyClassStudents:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -89,12 +89,6 @@ export const getPresentStudentsForFaculty = async (req, res) => {
       if (activeClass) break;
     }
 
-    // Fallback DEMO
-    if (!activeClass) {
-      activeClass = timetables[0]?.className;
-      currentPeriod = timetables[0]?.periods[0]?.period;
-    }
-
     if (!activeClass) {
       return res.json({
         className: null,
@@ -121,7 +115,7 @@ export const getPresentStudentsForFaculty = async (req, res) => {
       className: activeClass,
     });
 
-    return res.json({
+    res.json({
       className: activeClass,
       period: currentPeriod,
       students: present,
@@ -129,13 +123,13 @@ export const getPresentStudentsForFaculty = async (req, res) => {
       totalStudents,
     });
   } catch (err) {
-    console.error("getPresentStudentsForFaculty ERROR:", err);
+    console.error("getPresentStudentsForFaculty:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 /* ----------------------------------------------------------
-   3) FULL DAY — All periods with present & absent
+   3) FULL DAY attendance
 ----------------------------------------------------------- */
 export const getFacultyAttendanceForDay = async (req, res) => {
   try {
@@ -166,7 +160,7 @@ export const getFacultyAttendanceForDay = async (req, res) => {
       return res.json({
         className: null,
         periods: [],
-        message: "You are not teaching any class today.",
+        message: "You are not teaching today",
       });
     }
 
@@ -175,7 +169,7 @@ export const getFacultyAttendanceForDay = async (req, res) => {
       className,
     }).select("name roll");
 
-    const fullDay = [];
+    const periods = [];
 
     for (const p of todaysTimetable.periods) {
       const records = await Attendance.find({
@@ -184,38 +178,23 @@ export const getFacultyAttendanceForDay = async (req, res) => {
         date: { $gte: start, $lte: end },
       }).populate("student", "name roll");
 
-      const present = records.map((r) => ({
-        name: r.student.name,
-        roll: r.student.roll,
-      }));
-
       const presentIds = new Set(
-        records.map((r) => r.student?._id?.toString())
+        records.map((r) => r.student._id.toString())
       );
 
-      const absent = allStudents.filter(
-        (s) => !presentIds.has(s._id.toString())
-      );
-
-      fullDay.push({
+      periods.push({
         period: p.period,
         subject: p.subject,
         start: p.start,
         end: p.end,
-        presentCount: present.length,
-        absentCount: absent.length,
-        totalStudents: allStudents.length,
-        presentStudents: present,
-        absentStudents: absent,
+        presentCount: records.length,
+        absentCount: allStudents.length - records.length,
       });
     }
 
-    return res.json({
-      className,
-      periods: fullDay,
-    });
+    res.json({ className, periods });
   } catch (err) {
-    console.error("getFacultyAttendanceForDay ERROR:", err);
+    console.error("getFacultyAttendanceForDay:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
