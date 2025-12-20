@@ -48,7 +48,7 @@ export default defineConfig({
     // 🔥 THE MAIN FIX: Force WebSocket to use ws:// (NOT wss://)
     hmr: {
       protocol: "ws",      // prevent wss:// which breaks on LAN
-      host: "172.28.29.117", // your LAN IP (change when network changes)
+      host: "10.172.4.59", // your LAN IP (change when network changes)
       port: 5173,
     },
 

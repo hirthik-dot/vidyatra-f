@@ -49,7 +49,11 @@ export default function Login() {
     } catch (err) {
       console.error(err);
       setLoading(false);
-      setError("Something went wrong. Please try again.");
+       alert(
+    err.response?.data?.message ||
+    err.message ||
+    JSON.stringify(err)
+  );
     }
   };
 

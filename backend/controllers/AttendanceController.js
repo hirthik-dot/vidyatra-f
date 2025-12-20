@@ -184,7 +184,7 @@ export const verifyWifiConnection = (req, res) => {
     // SIH + Hotspot allowed ranges
     const allowedPrefixes = [
       "172.28.",       // Your SIH WiFi range
-      "10.123.226.",   // SIH internal DHCP
+      "10.172.4.",   // SIH internal DHCP
       "192.168.43.",   // Android hotspot
       "192.168.137.",  // Windows hotspot
     ];

@@ -1,8 +1,12 @@
+import fingerprints from "../data/wifiFingerprints.json";
+import { toVector } from "../utils/wifiVector.js";
+import { predictClassroom } from "../utils/knnWifi.js";
+
 export const checkWifiAuth = (req, res) => {
   try {
-    console.log("=== WIFI AUTH CHECK START ===");
+    console.log("=== WIFI ML AUTH CHECK START ===");
 
-    // IP (for debugging only – NOT for rejecting)
+    // For debugging only
     const ip =
       req.headers["x-forwarded-for"] ||
       req.connection.remoteAddress ||
@@ -11,49 +15,50 @@ export const checkWifiAuth = (req, res) => {
     const cleanIP = (ip || "").replace("::ffff:", "");
     console.log("Client IP =", cleanIP);
 
-    // APPROVED HOTSPOTS
-    const allowedSSIDs = [
-      "Sujith's Phone",
-      "OPPO Hotspot",
-      "AndroidAP",
-      "realme 9 Pro+",
-      "REALME hotspot",
-      "Vidyatra WiFi"
-    ];
+    /**
+     * Expected request body:
+     * {
+     *   wifiScan: [{ bssid, rssi }, ...],
+     *   scheduledClassroom: "CLASSROOM_A"
+     * }
+     */
+    const { wifiScan, scheduledClassroom } = req.body;
 
-    // SSID from frontend (optional)
-    const clientSSID = req.headers["x-wifi-ssid"];
+    if (!wifiScan || !Array.isArray(wifiScan) || !scheduledClassroom) {
+      return res.status(400).json({
+        success: false,
+        message: "WiFi scan or classroom missing ❌",
+      });
+    }
 
-    // If frontend sends SSID → use strict check
-    if (clientSSID) {
-      console.log("Received SSID =", clientSSID);
+    // Convert WiFi scan → fixed-length vector
+    const inputVector = toVector(wifiScan);
 
-      if (!allowedSSIDs.includes(clientSSID)) {
-        return res.json({
-          success: false,
-          message: `Connected to ${clientSSID}, not an approved hotspot ❌`,
-          ip: cleanIP,
-        });
-      }
+    // ML prediction using KNN
+    const predictedClassroom = predictClassroom(
+      inputVector,
+      fingerprints
+    );
 
+    console.log("Predicted Classroom =", predictedClassroom);
+    console.log("Scheduled Classroom =", scheduledClassroom);
+
+    if (predictedClassroom !== scheduledClassroom) {
       return res.json({
-        success: true,
-        message: `WiFi Verified ✔ Connected to ${clientSSID}`,
+        success: false,
+        message: "Not inside scheduled classroom ❌",
         ip: cleanIP,
       });
     }
 
-    // If SSID unavailable → fallback allow
-    console.log("SSID NOT PROVIDED → fallback allow mode.");
-
     return res.json({
       success: true,
-      message: "WiFi Verified ✔ (fallback mode)",
+      message: "WiFi Verified ✔ Classroom matched",
       ip: cleanIP,
     });
 
   } catch (err) {
-    console.error("WIFI CHECK ERROR:", err);
+    console.error("WIFI ML CHECK ERROR:", err);
     return res.status(500).json({
       success: false,
       message: "WiFi verification failed ❌",

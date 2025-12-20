@@ -1,0 +1,6 @@
+{
+  "appId": "com.vidyatra.app",
+  "appName": "vidyatra",
+  "webDir": "frontend/dist",
+  "bundledWebRuntime": false
+}

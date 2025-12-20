@@ -183,7 +183,7 @@ export default function Attendance() {
   const verifyWifi = async () => {
     try {
       const res = await fetch(
-        "http://172.28.29.117:5000/api/student/attendance/check-wifi",
+        "https://10.172.4.59:5173/api/student/attendance/check-wifi",
         {
           method: "GET",
           mode: "cors", // 🔥 MUST ADD THIS
