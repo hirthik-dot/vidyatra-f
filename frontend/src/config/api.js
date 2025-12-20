@@ -1,19 +1,27 @@
-// src/config/api.js
+import axios from "axios";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://vidyatra-f-1-4obq.onrender.com";
+/**
+ * 🔥 Render backend base URL
+ * change only here in future
+ */
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Helper for fetch
-export const apiFetch = (path, options = {}) => {
+/**
+ * Axios instance
+ */
+const api = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+/**
+ * Attach token automatically
+ */
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-  return fetch(`${API_BASE_URL}/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  });
-};
+export default api;

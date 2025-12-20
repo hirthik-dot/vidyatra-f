@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, GraduationCap, ChevronRight } from "lucide-react";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function CollegeStudents() {
   const [students, setStudents] = useState([]);
