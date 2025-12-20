@@ -1,14 +1,14 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const privateMessageSchema = new mongoose.Schema({
   from: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   to: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   body: {
@@ -21,4 +21,9 @@ const privateMessageSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('PrivateMessage', privateMessageSchema);
+const PrivateMessage = mongoose.model(
+  "PrivateMessage",
+  privateMessageSchema
+);
+
+export default PrivateMessage;

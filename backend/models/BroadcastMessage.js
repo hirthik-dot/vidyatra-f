@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const broadcastMessageSchema = new mongoose.Schema({
   title: {
@@ -11,7 +11,7 @@ const broadcastMessageSchema = new mongoose.Schema({
   },
   faculty: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   createdAt: {
@@ -20,4 +20,9 @@ const broadcastMessageSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('BroadcastMessage', broadcastMessageSchema);
+const BroadcastMessage = mongoose.model(
+  "BroadcastMessage",
+  broadcastMessageSchema
+);
+
+export default BroadcastMessage;
