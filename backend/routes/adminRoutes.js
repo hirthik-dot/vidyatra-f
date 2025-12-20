@@ -4,7 +4,7 @@ import { protect, protectAdmin } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import User from "../models/User.js";
 import { seedWeeklyTimetable } from "../controllers/seedTimetableController.js";
-import { getAllStudents } from "../controllers/AdminController.js";
+import { getAllStudents } from "../controllers/adminController.js";
 import { getClassStats } from "../controllers/adminClassController.js";
 
 import {

@@ -1,5 +1,5 @@
 import express from "express";
-import { generateWeeklyTimetable } from "../controllers/WeeklyTimetableController.js";
+import { generateWeeklyTimetable } from "../controllers/weeklyTimetableController.js";
 
 const router = express.Router();
 

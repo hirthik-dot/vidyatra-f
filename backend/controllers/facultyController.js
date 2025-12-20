@@ -1,9 +1,9 @@
 // backend/routes/facultyRoutes.js
 import express from "express";
-import { protect } from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 // Import ONLY the functions that actually exist
-import { getFacultyDashboard } from "../controllers/FacultyController.js";
+import { getFacultyDashboard } from "../controllers/facultyController.js";
 
 const router = express.Router();
 

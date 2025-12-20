@@ -7,7 +7,7 @@ import {
   getMyClassStudents,
   getPresentStudentsForFaculty,
   getFacultyAttendanceForDay,
-} from "../controllers/FacultyAttendanceController.js";
+} from "../controllers/facultyDashboardController.js";
 
 import {
   getFacultyTodayTimetable,
@@ -15,7 +15,7 @@ import {
   getTodayFreePeriods,
   claimFreePeriod,
   getFacultyWeeklyTimetable,
-} from "../controllers/FacultyTimetableController.js";
+} from "../controllers/facultyTimetableController.js";
 
 import { getFacultyDashboard } from "../controllers/facultyDashboardController.js";
 

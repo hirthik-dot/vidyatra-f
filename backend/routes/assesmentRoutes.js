@@ -7,7 +7,7 @@ import {
   getAssessmentById,
   submitAssessment,
   getAssessmentSubmissions,
-} from "../controllers/AssessmentController.js";
+} from "../controllers/assessmentController.js";
 
 const router = express.Router();
 

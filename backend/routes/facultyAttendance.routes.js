@@ -4,7 +4,7 @@ import { requireRole } from "../middleware/roleMiddleware.js";
 
 import {
   getFacultyAttendanceForDay
-} from "../controllers/FacultyAttendance.controller.js";
+} from "../controllers/facultyAttendance.controller.js";
 
 const router = express.Router();
 

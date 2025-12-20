@@ -6,7 +6,7 @@ import {
   createFaculty,
   updateFaculty,
   deleteFaculty,
-} from "../controllers/AdminFacultyController.js";
+} from "../controllers/adminFacultyController.js";
 
 const router = express.Router();
 

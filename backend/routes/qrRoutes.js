@@ -1,5 +1,5 @@
 import express from "express";
-import { getCurrentQR } from "../controllers/QrController.js";
+import { getCurrentQR } from "../controllers/qrController.js";
 
 const router = express.Router();
 

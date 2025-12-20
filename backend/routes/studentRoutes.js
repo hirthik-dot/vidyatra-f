@@ -4,22 +4,35 @@ import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 
-// Controllers
-import { getStudentDashboard } from "../controllers/StudentController.js";
-import { getTodayTimetable } from "../controllers/StudentTimetableController.js";
+// ================= CONTROLLERS =================
+
+// Student core
+import { getStudentDashboard } from "../controllers/studentController.js";
+import { getTodayTimetable } from "../controllers/studentTimetableController.js";
+
+// AI + Interests
 import { getAISuggestions } from "../controllers/aiSuggestionController.js";
 import { saveInterests } from "../controllers/studentInterestController.js";
-import { markStudentAttendance } from "../controllers/AttendanceController.js";
-import { getCurrentQR } from "../controllers/QrController.js";
-import { getLiveQR } from "../controllers/AttendanceController.js";
-import { generatePersonalMaterial } from "../controllers/StudyMaterialController.js";
-import { verifyWifiConnection } from "../controllers/AttendanceController.js";
+
+// Attendance (ALL from one controller)
+import {
+  markStudentAttendance,
+  getLiveQR,
+  verifyWifiConnection,
+} from "../controllers/attendanceController.js";
+
+// QR
+import { getCurrentQR } from "../controllers/qrController.js";
+
+// Study material
+import { generatePersonalMaterial } from "../controllers/studyMaterialController.js";
 
 // GEO instead of Bluetooth
-import { checkGeoAuth } from "../controllers/GeoController.js";
+import { checkGeoAuth } from "../controllers/geoController.js";
+
+// ================= MODELS & LIBS =================
 
 import User from "../models/User.js";
-
 import multer from "multer";
 import axios from "axios";
 import FormData from "form-data";
@@ -89,7 +102,7 @@ router.post(
 );
 
 /* ======================================================
-   GET STUDENT LIST
+   GET STUDENT LIST (BASIC)
 ====================================================== */
 router.get("/", async (req, res) => {
   try {
@@ -104,7 +117,7 @@ router.get("/", async (req, res) => {
 });
 
 /* ======================================================
-   Personalized Study Material
+   PERSONALIZED STUDY MATERIAL
 ====================================================== */
 router.get(
   "/personal-material",
@@ -114,7 +127,7 @@ router.get(
 );
 
 /* ======================================================
-   FULL STUDENT LIST FOR ADMIN UI
+   FULL STUDENT LIST (ADMIN UI)
 ====================================================== */
 router.get("/all/full", async (req, res) => {
   try {
