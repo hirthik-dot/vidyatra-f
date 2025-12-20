@@ -18,34 +18,19 @@ import { getDashboardStats } from "../controllers/adminDashboardController.js";
 
 const router = express.Router();
 
-router.get(
-  "/faculty-list",
-  protect,
-  requireRole("admin"),
-  async (req, res) => {
-    const faculty = await User.find({ role: "faculty" });
-    res.json({ faculty });
-  }
-);
+router.get("/faculty-list", protect, requireRole("admin"), async (req, res) => {
+  const faculty = await User.find({ role: "faculty" });
+  res.json({ faculty });
+});
 
 router.get("/students", protectAdmin, getAllStudents);
 
 router.get("/seed-timetable", seedWeeklyTimetable);
 
-router.get(
-  "/classes",
-  protect,
-  requireRole("admin"),
-  getClassStats
-);
+router.get("/classes", protect, requireRole("admin"), getClassStats);
 
 // TIMETABLE META (faculty + subjects)
-router.get(
-  "/timetable/meta",
-  protect,
-  requireRole("admin"),
-  getTimetableMeta
-);
+router.get("/timetable/meta", protect, requireRole("admin"), getTimetableMeta);
 
 // GET weekly timetable of a class
 router.get(
@@ -72,11 +57,6 @@ router.post(
 );
 
 // ✅ SINGLE dashboard route (fixed)
-router.get(
-  "/dashboard",
-  protect,
-  requireRole("admin"),
-  getDashboardStats
-);
+router.get("/dashboard", protect, requireRole("admin"), getDashboardStats);
 
 export default router;

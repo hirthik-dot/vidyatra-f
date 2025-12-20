@@ -9,16 +9,18 @@ const router = express.Router();
 /* =======================================================
    1️⃣ GET ALL ASSESSMENTS FOR STUDENT
 ========================================================= */
-router.get("/:studentId", authMiddleware, async (req, res) => {
+router.get("/:studentId", protect, async (req, res) => {
   try {
     const { studentId } = req.params;
 
     const studentClass = req.user.className;
 
     // 1) Get assessments
-    const assessments = await Assessment.find({ className: studentClass }).sort({
-      createdAt: -1,
-    });
+    const assessments = await Assessment.find({ className: studentClass }).sort(
+      {
+        createdAt: -1,
+      }
+    );
 
     // 2) Get submissions for this student
     const submissions = await AssessmentSubmission.find({ studentId });
@@ -47,7 +49,7 @@ router.get("/:studentId", authMiddleware, async (req, res) => {
 /* =======================================================
    2️⃣ GET SINGLE ASSESSMENT (ATTEMPT PAGE)
 ========================================================= */
-router.get("/view/:id", authMiddleware, async (req, res) => {
+router.get("/view/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
 

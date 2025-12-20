@@ -22,7 +22,7 @@ router.get("/xp", protect, async (req, res) => {
 });
 
 // GAIN XP
-router.post("/gain-xp", authMiddleware, async (req, res) => {
+router.post("/gain-xp", protect, async (req, res) => {
   try {
     const { gameId } = req.body;
 

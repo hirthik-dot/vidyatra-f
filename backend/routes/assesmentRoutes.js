@@ -20,20 +20,10 @@ router.get(
 );
 
 // Student view
-router.get(
-  "/:id",
-  protect,
-  requireRole("student"),
-  getAssessmentById
-);
+router.get("/:id", protect, requireRole("student"), getAssessmentById);
 
 // Student submit
-router.post(
-  "/submit",
-  protect,
-  requireRole("student"),
-  submitAssessment
-);
+router.post("/submit", protect, requireRole("student"), submitAssessment);
 
 // Faculty – get submissions
 router.get(

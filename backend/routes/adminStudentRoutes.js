@@ -11,35 +11,15 @@ import {
 const router = express.Router();
 
 // GET all students
-router.get(
-  "/students",
-  protect,
-  requireRole("admin"),
-  getStudents
-);
+router.get("/students", protect, requireRole("admin"), getStudents);
 
 // CREATE student
-router.post(
-  "/students",
-  protect,
-  requireRole("admin"),
-  createStudent
-);
+router.post("/students", protect, requireRole("admin"), createStudent);
 
 // UPDATE student
-router.put(
-  "/students/:id",
-  protect,
-  requireRole("admin"),
-  updateStudent
-);
+router.put("/students/:id", protect, requireRole("admin"), updateStudent);
 
 // DELETE student
-router.delete(
-  "/students/:id",
-  protect,
-  requireRole("admin"),
-  deleteStudent
-);
+router.delete("/students/:id", protect, requireRole("admin"), deleteStudent);
 
 export default router;

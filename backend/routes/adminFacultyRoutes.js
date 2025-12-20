@@ -11,35 +11,15 @@ import {
 const router = express.Router();
 
 // GET all faculty
-router.get(
-  "/faculty",
-  protect,
-  requireRole("admin"),
-  getFaculty
-);
+router.get("/faculty", protect, requireRole("admin"), getFaculty);
 
 // CREATE faculty
-router.post(
-  "/faculty",
-  protect,
-  requireRole("admin"),
-  createFaculty
-);
+router.post("/faculty", protect, requireRole("admin"), createFaculty);
 
 // UPDATE faculty
-router.put(
-  "/faculty/:id",
-  protect,
-  requireRole("admin"),
-  updateFaculty
-);
+router.put("/faculty/:id", protect, requireRole("admin"), updateFaculty);
 
 // DELETE faculty
-router.delete(
-  "/faculty/:id",
-  protect,
-  requireRole("admin"),
-  deleteFaculty
-);
+router.delete("/faculty/:id", protect, requireRole("admin"), deleteFaculty);
 
 export default router;

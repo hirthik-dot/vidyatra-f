@@ -14,7 +14,7 @@ import {
   markFacultyPeriodAbsent,
   getTodayFreePeriods,
   claimFreePeriod,
-  getFacultyWeeklyTimetable
+  getFacultyWeeklyTimetable,
 } from "../controllers/FacultyTimetableController.js";
 
 import { getFacultyDashboard } from "../controllers/facultyDashboardController.js";

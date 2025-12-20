@@ -35,22 +35,12 @@ router.post("/save-interests", protect, saveInterests);
 /* ======================================================
    STUDENT DASHBOARD
 ====================================================== */
-router.get(
-  "/dashboard",
-  protect,
-  requireRole("student"),
-  getStudentDashboard
-);
+router.get("/dashboard", protect, requireRole("student"), getStudentDashboard);
 
 /* ======================================================
    TIMETABLE
 ====================================================== */
-router.get(
-  "/timetable",
-  protect,
-  requireRole("student"),
-  getTodayTimetable
-);
+router.get("/timetable", protect, requireRole("student"), getTodayTimetable);
 
 /* ======================================================
    AI SUGGESTIONS
@@ -232,7 +222,10 @@ router.post(
 
       return markStudentAttendance(req, res);
     } catch (err) {
-      console.error("Face attendance error:", err.response?.data || err.message);
+      console.error(
+        "Face attendance error:",
+        err.response?.data || err.message
+      );
       return res
         .status(500)
         .json({ message: "Server error in face attendance" });
